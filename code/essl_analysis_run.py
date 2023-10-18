@@ -16,6 +16,7 @@ Image.MAX_IMAGE_PIXELS = None  # Disable the limit
 
 # define paths
 path_file = '/home/daniele/Documenti/PhD_Cologne/TeamX/data/'
+path_figs = '/home/daniele/Documenti/PhD_Cologne/TeamX/figs/'
 
 #define filenames
 filename_essl = path_file+'ESWD_HAIL_PRECIP_TORNADO_WIND_5-16_42-51_5_20230101-20231010_v1_6.csv'
@@ -48,7 +49,7 @@ encompassing_domain = [left_border, right_border, bottom_border, top_border]
 #essl_analysis_functions.plot_events_paula([data_paula_red,data_paula_grey], domain_expats, [domain_red,domain_grey], False, raster_file_path)
 raster_filename = 'NE1_HR_LC_SR_W_DR/NE1_HR_LC_SR_W_DR.tif'
 title = 'ESSL Events Location 2013-2019'
-essl_analysis_functions.plot_events_paula([data_paula_red,data_paula_grey], encompassing_domain, [domain_red,domain_grey], False, raster_filename, title, path_file)
+essl_analysis_functions.plot_events_paula([data_paula_red,data_paula_grey], encompassing_domain, [domain_red,domain_grey], False, raster_filename, title, path_file, path_figs)
 
 
 #TODO add orography and plot the entire domain of EXPAT with highlith on the TEAMX domain

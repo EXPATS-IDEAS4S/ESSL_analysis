@@ -76,7 +76,7 @@ def plot_events_paula(datasets, main_domain, subdomains, intensity, raster_filen
         ax.set_extent([minlon_main, maxlon_main, minlat_main, maxlat_main])
         ax.add_feature(cfeature.BORDERS, linestyle=':')
         ax.add_feature(cfeature.COASTLINE)
-        ax.add_feature(cfeature.LAKES)
+        ax.add_feature(cfeature.LAKES, alpha=0.5)
         ax.add_feature(cfeature.RIVERS)
 
         extent = [src.bounds.left, src.bounds.right, src.bounds.bottom, src.bounds.top]
@@ -104,6 +104,17 @@ def plot_events_paula(datasets, main_domain, subdomains, intensity, raster_filen
         #                                             scale='50m', 
         #                                             facecolor='none')
         # ax.add_feature(physical_labels, edgecolor='gray')
+
+        #add majot city coordinates
+        trento = [46.0667, 11.1167] #lat, lon
+        bolzano = [46.4981, 11.3548]
+
+        # Plot the points
+        ax.scatter(trento[1], trento[0], color='black', s=50, transform=ccrs.PlateCarree())
+        ax.scatter(bolzano[1], bolzano[0], color='black', s=50, transform=ccrs.PlateCarree())
+        # Plot the names next to the points, adjusted for lower right positioning
+        ax.text(trento[1] + 0.02, trento[0] - 0.02, 'Trento', color='black', transform=ccrs.PlateCarree(), ha='left', va='top')
+        ax.text(bolzano[1] + 0.02, bolzano[0] - 0.02, 'Bolzano', color='black', transform=ccrs.PlateCarree(), ha='left', va='top')
 
         #set up labels
         num_subdomains = len(subdomains)
