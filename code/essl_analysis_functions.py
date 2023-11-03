@@ -18,7 +18,7 @@ import cartopy.io.shapereader as shpreader
 
 
 
-def plot_events_essl(data, domain, intensity):    
+def plot_events_essl(data, domain):    
 
     # Filter data based on the provided domain [minlat, maxlat, minlon, maxlon]
     minlat, maxlat, minlon, maxlon = domain
@@ -41,28 +41,24 @@ def plot_events_essl(data, domain, intensity):
     print(hail_data)
     
     
-    if intensity:
-        sc1 = ax.scatter(rain_data['LONGITUDE']/1000, rain_data['LATITUDE']/1000, 
-                     c=rain_data['PRECIPITATION_AMOUNT'], marker='o', label='Rain', 
-                     cmap='Blues', transform=ccrs.PlateCarree())
-        sc2 = ax.scatter(hail_data['LONGITUDE']/1000, hail_data['LATITUDE']/1000, 
-                     c=hail_data['AVERAGE_HAIL_DIAMETER'], marker='^', label='Hail', 
-                     cmap='Reds', transform=ccrs.PlateCarree())
-        # Colorbar 
-        plt.colorbar(sc1, ax=ax, label='PRECIPITATION_AMOUNT (mm)')
-        plt.colorbar(sc2, ax=ax, label='AVERAGE_HAIL_DIAMETER (cm)')
-    else:
-        sc1 = ax.scatter(rain_data['LONGITUDE']/1000, rain_data['LATITUDE']/1000, 
-                     c='Blue', marker='o', label='Rain', 
-                     transform=ccrs.PlateCarree())
-        sc2 = ax.scatter(hail_data['LONGITUDE']/1000, hail_data['LATITUDE']/1000, 
-                     c='Red', marker='^', label='Hail', 
-                    transform=ccrs.PlateCarree())
+    
+    sc1 = ax.scatter(rain_data['LONGITUDE'], rain_data['LATITUDE'], 
+                    c=rain_data['PRECIPITATION_AMOUNT'], marker='o', label='Rain', 
+                    cmap='Blues', transform=ccrs.PlateCarree())
+    sc2 = ax.scatter(hail_data['LONGITUDE'], hail_data['LATITUDE'], 
+                    c=hail_data['AVERAGE_HAIL_DIAMETER'], marker='^', label='Hail', 
+                    cmap='Reds', transform=ccrs.PlateCarree())
+    # Colorbar 
+    #plt.colorbar(sc1, ax=ax, label='PRECIPITATION AMOUNT (mm)')
+    #plt.colorbar(sc2, ax=ax, label='AVERAGE HAIL DIAMETER (cm)')
+ 
     #set legend
     ax.legend()
 
     # Show the plot
     plt.show()
+
+
 
 
 def plot_events_paula(datasets, main_domain, subdomains, intensity, raster_filename, title, path_file, path_figs):

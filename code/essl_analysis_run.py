@@ -15,18 +15,22 @@ from PIL import Image
 Image.MAX_IMAGE_PIXELS = None  # Disable the limit
 
 # define paths
-path_file = '/home/daniele/Documenti/PhD_Cologne/TeamX/data/'
-path_figs = '/home/daniele/Documenti/PhD_Cologne/TeamX/figs/'
+#path_file = '/home/daniele/Documenti/PhD_Cologne/TeamX/data/'
+path_file = '/home/dcorradi/Documents/ESSL/Datasets/'
+#path_figs = '/home/daniele/Documenti/PhD_Cologne/TeamX/figs/'
+path_figs = 'home/dcorradi/Documents/ESSL/Figs/'
 
 #define filenames
 filename_essl = path_file+'ESWD_HAIL_PRECIP_TORNADO_WIND_5-16_42-51_5_20230101-20231010_v1_6.csv'
 filename_paula_red = path_file+'Red_domain_lon11.00-11.81_lat45.40-46.95.csv'
 filename_paula_grey = path_file+'Grey_domain_lon10.7-11.5_lat45.6-46.6.csv'
+filename = path_file+'Prec_Hail_ExpatsDomain_21-22.csv'
 
 # open csv files
 data_essl = pd.read_csv(filename_essl, low_memory=False)
 data_paula_red = pd.read_csv(filename_paula_red)
 data_paula_grey = pd.read_csv(filename_paula_grey)
+data = pd.read_csv(filename,low_memory=False)
 
 # define domain of interest # [minlat, maxlat, minlon, maxlon]
 domain_grey = [45.6, 46.6, 10.7, 11.5] #TeamX domain (Grey domain)
@@ -42,15 +46,16 @@ right_border = max(domain_grey[1], domain_red[1]) + padding
 bottom_border = min(domain_grey[2], domain_red[2]) - padding
 top_border = max(domain_grey[3], domain_red[3]) + padding
 
-encompassing_domain = [left_border, right_border, bottom_border, top_border]
+teamx_domain = [left_border, right_border, bottom_border, top_border]
 
 # plot the spatia distribution of the events
-#essl_analysis_functions.plot_events_essl(data_essl, domain_large, False)
+
 #essl_analysis_functions.plot_events_paula([data_paula_red,data_paula_grey], domain_expats, [domain_red,domain_grey], False, raster_file_path)
 raster_filename = 'NE1_HR_LC_SR_W_DR/NE1_HR_LC_SR_W_DR.tif'
-title = 'ESSL Events Location 2013-2019'
-essl_analysis_functions.plot_events_paula([data_paula_red,data_paula_grey], encompassing_domain, [domain_red,domain_grey], False, raster_filename, title, path_file, path_figs)
-
+title = 'ESSL Events Location'
+time_period = '2021-2022'
+#essl_analysis_functions.plot_events_paula([data_paula_red,data_paula_grey], teamx_domain, [domain_red,domain_grey], False, raster_filename, title, path_file, path_figs)
+essl_analysis_functions.plot_events_essl(data_essl, teamx_domain)
 
 #TODO add orography and plot the entire domain of EXPAT with highlith on the TEAMX domain
 #TODO legend outside and adjust colorbars
