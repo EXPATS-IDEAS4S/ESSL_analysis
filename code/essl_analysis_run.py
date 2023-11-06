@@ -78,11 +78,17 @@ title = 'ESSL Events Location'
 #essl_analysis_functions.plot_intensity_trend(data,teamx_domain,title+': '+time_period+' - '+'TeamX Domain' , path_figs, ['2021-01-01','2022-12-31'],'W')
 
 #plot events rankings
-title = 'ESSL Events Intensity Ranking'
-essl_analysis_functions.plot_top_intensities(data, domain_expats,title+': '+time_period+' - '+'Expats Domain', path_figs, path_file+raster_filename)
-essl_analysis_functions.plot_top_intensities(data, teamx_domain,title+': '+time_period+' - '+'TeamX Domain' , path_figs, path_file+raster_filename)
+#title = 'ESSL Events Intensity Ranking'
+#essl_analysis_functions.plot_top_intensities(data, domain_expats,title+': '+time_period+' - '+'Expats Domain', path_figs, path_file+raster_filename)
+#essl_analysis_functions.plot_top_intensities(data, teamx_domain,title+': '+time_period+' - '+'TeamX Domain' , path_figs, path_file+raster_filename)
 
 
+# plot daily events maps
+title = 'ESSL Daily Events Map'
+years = [2021,2022] 
+for year in years:
+    output_dir = '/home/daniele/Documenti/PhD_Cologne/TeamX/figs/Daily_cases/'+str(year)+'/'
+    essl_analysis_functions.save_daily_event_maps(data, domain_expats, title+': Expats Domain', path_file+raster_filename, output_dir, year)
+    essl_analysis_functions.save_daily_event_maps(data, teamx_domain, title+': TeamX Domain', path_file+raster_filename, output_dir, year)
 
-# TODO plot the ranking based on the intensity of the events
-# TODO gif with events evoluton?
+# TODO gif with daily events evoluton (then pick few days and make hour resolutuion)
