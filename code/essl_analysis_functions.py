@@ -567,85 +567,25 @@ def plot_intensity_trend(data, domain, title, path_figs, time_period, frequency=
 
 
 
-def add_labels_inside(bars, data, times, latitudes, longitudes, invert_axis=False):
-    for bar, amount, time, lat, lon in zip(bars, data, times, latitudes, longitudes):
-        # Format the label
-        label = f'{time.strftime("%Y-%m-%d")} ({lat:.2f}, {lon:.2f})'
-
-        # Get the width and height of the bar
-        bar_width = bar.get_width()
-        bar_height = bar.get_height()
-
-        # Determine the x position for text
-        x_offset_fraction = 0.03  # 3% of the bar's width
-        x_offset = bar_width * x_offset_fraction
-        x_position = bar.get_x() + bar_width - x_offset if invert_axis else bar.get_x() + x_offset
-
-        # The y position is the center of the bar
-        y_position = bar.get_y() + bar_height / 2
-
-        # If the axis is inverted, we need to ensure the label is still within the bar
-        ha = 'right' if invert_axis else 'left'
-
-        # Add text inside the bar
-        plt.text(
-            x_position,
-            y_position,
-            label,
-            ha=ha, 
-            va='center',
-            color='black' if amount > bar_width * 0.1 else 'white',  # Contrast text color depending on bar size
-            fontsize=8
-        )
-
-
-def plot_top_intensities_old(data, domain, title, path_figs):
-    minlat, maxlat, minlon, maxlon = domain
-    filtered_data = data[(data['LATITUDE'] >= minlat) & (data['LATITUDE'] <= maxlat) &
-                         (data['LONGITUDE'] >= minlon) & (data['LONGITUDE'] <= maxlon)]
-
-    # Convert 'datetime' column to datetime type
-    filtered_data['TIME_EVENT'] = pd.to_datetime(filtered_data['TIME_EVENT'])
-
-    # Filter top 20 for each event type based on intensity
-    top_precip = filtered_data[filtered_data['TYPE_EVENT'] == 'PRECIP'].nlargest(20, 'PRECIPITATION_AMOUNT').reset_index()
-    top_hail = filtered_data[filtered_data['TYPE_EVENT'] == 'HAIL'].nlargest(20, 'MAX_HAIL_DIAMETER').reset_index()
-
-    # Create subplots
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 10))
-
-    # Plotting Precipitation
-    precip_bars = ax1.barh(top_precip.index, top_precip['PRECIPITATION_AMOUNT'], color='#add8e6', alpha=0.6)
-    ax1.set_xlabel('PRECIPITATION AMOUNT (mm)', fontsize=12)
-    ax1.invert_xaxis()  # Invert x-axis for left plot
-    ax1.set_yticks([])  # Remove y-axis ticks
-    ax1.set_ylim(len(top_precip) - 0.5, -0.5) # Set the y-axis limits to invert them
-
-    # Plotting Hail
-    hail_bars = ax2.barh(top_hail.index, top_hail['MAX_HAIL_DIAMETER'], color='#ffa07a', alpha=0.6)
-    ax2.set_xlabel('MAX HAIL DIAMETER (cm)', fontsize=12)
-    ax2.set_yticks([])  # Remove y-axis ticks
-    ax2.set_ylim(len(top_hail) - 0.5, -0.5) # Set the y-axis limits to invert them
-
-    # Add labels inside the bars
-    add_labels_inside(precip_bars, top_precip['PRECIPITATION_AMOUNT'], top_precip['TIME_EVENT'], top_precip['LATITUDE'], top_precip['LONGITUDE'], invert_axis=True)
-    add_labels_inside(hail_bars, top_hail['MAX_HAIL_DIAMETER'], top_hail['TIME_EVENT'], top_hail['LATITUDE'], top_hail['LONGITUDE'])
-
-    # Set titles
-    ax1.set_title('Top 20 Precipitation Intensities', fontsize=14)
-    ax2.set_title('Top 20 Hail Intensities', fontsize=14)
-    fig.suptitle(title, fontsize=16, fontweight='bold')
-
-    # Adjust subplots and save plot
-    plt.subplots_adjust(wspace=0.5, top=0.85)
-    plt.tight_layout()
-    fig.savefig(f'{path_figs}{title}.png', bbox_inches='tight')
-
-    # Show plot
-    plt.show()
 
 
 def plot_top_intensities(data, domain, title, path_figs, path_raster):
+    """
+    Generates and saves a set of plots visualizing the top weather event intensities within a specified domain.
+
+    The function filters the data for the given domain, selects the top 20 events of precipitation and hail based on intensity,
+    and generates a set of bar plots for these events. Additionally, it displays the top events on a geographical map.
+
+    Parameters:
+    - data (DataFrame): The dataset containing weather event information including type, intensity, and coordinates.
+    - domain (tuple): A tuple specifying the latitude and longitude bounds (minlat, maxlat, minlon, maxlon) for filtering the data.
+    - title (str): The title for the plots, which also serves as the filename when saving.
+    - path_figs (str): The file path where the generated plot image will be saved.
+    - path_raster (str): The file path to a raster file that provides the base map for plotting events geographically.
+
+    Returns:
+    - None: This function does not return any value.
+    """
     minlat, maxlat, minlon, maxlon = domain
     filtered_data = data[(data['LATITUDE'] >= minlat) & (data['LATITUDE'] <= maxlat) &
                          (data['LONGITUDE'] >= minlon) & (data['LONGITUDE'] <= maxlon)]
@@ -674,7 +614,6 @@ def plot_top_intensities(data, domain, title, path_figs, path_raster):
     ax1.tick_params(axis='x', which='major', labelsize=12)
     ax1.set_ylim(len(top_precip) - 0.5, -0.5) # Set the y-axis limits to invert them
 
-
     # Plotting Hail
     hail_bars = ax2.barh(top_hail.index, top_hail['MAX_HAIL_DIAMETER'], color='red', alpha=0.6)
     ax2.set_xlabel('Max Hail Diameter (cm)', fontsize=14)
@@ -683,8 +622,6 @@ def plot_top_intensities(data, domain, title, path_figs, path_raster):
     ax2.set_title('Top 20 Hail Intensities', fontsize=14)
     ax2.tick_params(axis='x', which='major', labelsize=12)
     ax2.set_ylim(len(top_precip) - 0.5, -0.5) # Set the y-axis limits to invert them
-
-
 
     # Plot raster
     with rasterio.open(path_raster) as src:
@@ -733,4 +670,103 @@ def plot_top_intensities(data, domain, title, path_figs, path_raster):
     # Show plot
     plt.tight_layout()
     plt.show()
+
+
+
+def save_daily_event_maps(data, domain, title, path_raster, output_dir, year, start_month=5, end_month=9):
+    """
+    Saves daily weather event maps to an output directory.
+    """
+    minlat, maxlat, minlon, maxlon = domain
+    data = data[(data['LATITUDE'] >= minlat) & (data['LATITUDE'] <= maxlat) &
+                         (data['LONGITUDE'] >= minlon) & (data['LONGITUDE'] <= maxlon)]
+
+    # Filter data for the specified year and date range
+    data['TIME_EVENT'] = pd.to_datetime(data['TIME_EVENT'])
+    data = data[(data['TIME_EVENT'].dt.year == year) &
+                (data['TIME_EVENT'].dt.month >= start_month) &
+                (data['TIME_EVENT'].dt.month <= end_month)]
+
+    # Get maximum intensity for normalization
+    max_precip_intensity = data[data['TYPE_EVENT'] == 'PRECIP']['PRECIPITATION_AMOUNT'].max()
+    max_hail_intensity = data[data['TYPE_EVENT'] == 'HAIL']['MAX_HAIL_DIAMETER'].max()
+
+    # Define the normalization for the colorbars
+    norm_precip = mcolors.Normalize(vmin=0, vmax=max_precip_intensity)
+    norm_hail = mcolors.Normalize(vmin=0, vmax=max_hail_intensity)
+
+    # Create a date range for the specified months
+    date_range = pd.date_range(start=f'{year}-{start_month}-01', end=f'{year}-{end_month}-30')
+
+    for current_date in date_range:
+        daily_data = data[data['TIME_EVENT'].dt.date == current_date.date()]
+
+        fig = plt.figure(figsize=(10, 5))
+        ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
+
+        # Plot the base map with the raster background
+        with rasterio.open(path_raster) as src:
+            # Create a map plot
+            ax.set_extent([minlon, maxlon, minlat, maxlat])
+            ax.add_feature(cfeature.BORDERS, linestyle=':')
+            ax.add_feature(cfeature.COASTLINE)
+            ax.add_feature(cfeature.LAKES, alpha=0.5)
+            ax.add_feature(cfeature.RIVERS)
+
+            extent = [src.bounds.left, src.bounds.right, src.bounds.bottom, src.bounds.top]
+            ax.imshow(src.read(1), origin='upper', cmap='gist_earth', extent=extent, transform=ccrs.PlateCarree(), alpha=0.5, interpolation='spline36')
+            
+            ax.add_feature(cfeature.OCEAN, color='blue')
+
+            # Add lat-lon axis tick labels
+            gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='gray', alpha=0.5, linestyle='--')
+            gl.top_labels = False
+            gl.right_labels = False
+            gl.xformatter = LONGITUDE_FORMATTER
+            gl.yformatter = LATITUDE_FORMATTER
+            gl.xlabel_style = {'size': 12, 'color': 'black'}
+            gl.ylabel_style = {'size': 12, 'color': 'black'}
+
+        # Plot each event
+        for _, row in daily_data.iterrows():
+            if row['TYPE_EVENT'] == 'PRECIP':
+                marker = 'o'  # Example marker for precipitation
+                cmap = plt.cm.Blues  # Color map for precipitation
+                norm = norm_precip  # Normalization based on precipitation
+                color = cmap(norm(row['PRECIPITATION_AMOUNT']))
+            else:
+                marker = '^'  # Example marker for hail
+                cmap = plt.cm.Reds  # Color map for hail
+                norm = norm_hail  # Normalization based on hail
+                color = cmap(norm(row['MAX_HAIL_DIAMETER']))
+
+            # Plot the event location
+            ax.plot(row['LONGITUDE'], row['LATITUDE'], marker=marker, color=color, markersize=10, transform=ccrs.Geodetic())
+    
+
+        # Create a scalar mappable for the colorbar
+        sm_precip = plt.cm.ScalarMappable(cmap=plt.cm.Blues, norm=norm_precip)
+        sm_hail = plt.cm.ScalarMappable(cmap=plt.cm.Reds, norm=norm_hail)
+
+        # Add the colorbars to the figure
+        # Precipitation colorbar on the right
+        cax_precip = fig.add_axes([0.8, 0.55, 0.03, 0.35])  # [left, bottom, width, height]
+        cbar_precip = fig.colorbar(sm_precip, cax=cax_precip)
+        cbar_precip.set_label('Precipitation Amount (mm)')
+
+        # Hail colorbar on the right, below the precipitation colorbar
+        cax_hail = fig.add_axes([0.8, 0.10, 0.03, 0.35])  # [left, bottom, width, height]
+        cbar_hail = fig.colorbar(sm_hail, cax=cax_hail)
+        cbar_hail.set_label('Max Hail Diameter (cm)')
+
+        # Add the date as text on the figure
+        date_str = current_date.strftime('%Y-%m-%d')
+        #plt.title(f'{title} for {date_str}', fontsize=14)
+        # Adjust the title space and layout of the plots
+        fig.suptitle(f'{title} for {date_str}', fontsize=14, fontweight='bold')  # Reduce the pad to bring the title closer to the plots
+        plt.subplots_adjust(left=0.1, right=0.95, top=0.93, bottom=0.1, wspace=0.1, hspace=0.1)
+
+        # Save the figure
+        fig.savefig(f'{output_dir}/{title}-{date_str}.png', dpi=300, bbox_inches='tight')
+        plt.close(fig)  # Close the figure to free memory
 
