@@ -64,10 +64,25 @@ title = 'ESSL Events Location'
 
 #plot the monthly frequency of the events
 
-title = 'Monthly Frequency of ESSL Events'
-essl_analysis_functions.plot_monthly_event_frequency(data,domain_expats,title+': '+time_period+' - '+'Expats Domain', path_figs)
-essl_analysis_functions.plot_monthly_event_frequency(data,teamx_domain,title+': '+time_period+' - '+'TeamX Domain' , path_figs)
+#title = 'Monthly Frequency of ESSL Events'
+#essl_analysis_functions.plot_monthly_event_frequency(data,domain_expats,title+': '+time_period+' - '+'Expats Domain', path_figs)
+#essl_analysis_functions.plot_monthly_event_frequency(data,teamx_domain,title+': '+time_period+' - '+'TeamX Domain' , path_figs)
 
-# TODO plot the temporal trend of the events with weekly resolution (higher?)
+# plot the temporal trend of the events with weekly resolution (TODO adjust the daily trend)
+#title='Weekly Occurences Trends of ESSL Events'
+#essl_analysis_functions.plot_event_trend(data,domain_expats,title+': '+time_period+' - '+'Expats Domain', path_figs, ['2021-01-01','2022-12-31'],'W')
+#essl_analysis_functions.plot_event_trend(data,teamx_domain,title+': '+time_period+' - '+'TeamX Domain' , path_figs, ['2021-01-01','2022-12-31'],'W')
+
+#title='Weekly Intensity Trends of ESSL Events'
+#essl_analysis_functions.plot_intensity_trend(data,domain_expats,title+': '+time_period+' - '+'Expats Domain', path_figs, ['2021-01-01','2022-12-31'],'W')
+#essl_analysis_functions.plot_intensity_trend(data,teamx_domain,title+': '+time_period+' - '+'TeamX Domain' , path_figs, ['2021-01-01','2022-12-31'],'W')
+
+#plot events rankings
+title = 'ESSL Events Intensity Ranking'
+essl_analysis_functions.plot_top_intensities(data, domain_expats,title+': '+time_period+' - '+'Expats Domain', path_figs, path_file+raster_filename)
+essl_analysis_functions.plot_top_intensities(data, teamx_domain,title+': '+time_period+' - '+'TeamX Domain' , path_figs, path_file+raster_filename)
+
+
+
 # TODO plot the ranking based on the intensity of the events
 # TODO gif with events evoluton?
