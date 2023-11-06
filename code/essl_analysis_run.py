@@ -15,10 +15,10 @@ from PIL import Image
 Image.MAX_IMAGE_PIXELS = None  # Disable the limit
 
 # define paths
-#path_file = '/home/daniele/Documenti/PhD_Cologne/TeamX/data/'
-path_file = '/home/dcorradi/Documents/ESSL/Datasets/'
-#path_figs = '/home/daniele/Documenti/PhD_Cologne/TeamX/figs/'
-path_figs = 'home/dcorradi/Documents/ESSL/Figs/'
+path_file = '/home/daniele/Documenti/PhD_Cologne/TeamX/data/'
+#path_file = '/home/dcorradi/Documents/ESSL/Datasets/'
+path_figs = '/home/daniele/Documenti/PhD_Cologne/TeamX/figs/'
+#path_figs = 'home/dcorradi/Documents/ESSL/Figs/'
 
 #define filenames
 filename_essl = path_file+'ESWD_HAIL_PRECIP_TORNADO_WIND_5-16_42-51_5_20230101-20231010_v1_6.csv'
@@ -48,16 +48,26 @@ top_border = max(domain_grey[3], domain_red[3]) + padding
 
 teamx_domain = [left_border, right_border, bottom_border, top_border]
 
-# plot the spatia distribution of the events
-
-#essl_analysis_functions.plot_events_paula([data_paula_red,data_paula_grey], domain_expats, [domain_red,domain_grey], False, raster_file_path)
 raster_filename = 'NE1_HR_LC_SR_W_DR/NE1_HR_LC_SR_W_DR.tif'
-title = 'ESSL Events Location'
 time_period = '2021-2022'
+
+#plot the spatial map of the events
+
+title = 'ESSL Events Location'
+#essl_analysis_functions.plot_events_paula([data_paula_red,data_paula_grey], domain_expats, [domain_red,domain_grey], False, raster_file_path)
 #essl_analysis_functions.plot_events_paula([data_paula_red,data_paula_grey], teamx_domain, [domain_red,domain_grey], False, raster_filename, title, path_file, path_figs)
-essl_analysis_functions.plot_events_essl(data_essl, teamx_domain)
+#essl_analysis_functions.plot_events_essl(data_essl, teamx_domain)
 
-#TODO add orography and plot the entire domain of EXPAT with highlith on the TEAMX domain
-#TODO legend outside and adjust colorbars
+#essl_analysis_functions.plot_events([data,data], teamx_domain, [domain_red,domain_grey], raster_filename, title+': '+time_period+' - '+'TeamX Domain', path_file, path_figs,True)
+#essl_analysis_functions.plot_events([data], domain_expats, [domain_expats], raster_filename, title+': '+time_period+' - '+'Expats Domain', path_file, path_figs, False)
 
-# TODO plot the temporal trend of the events, monthly frequency and (gif with events evoluton)?
+
+#plot the monthly frequency of the events
+
+title = 'Monthly Frequency of ESSL Events'
+essl_analysis_functions.plot_monthly_event_frequency(data,domain_expats,title+': '+time_period+' - '+'Expats Domain', path_figs)
+essl_analysis_functions.plot_monthly_event_frequency(data,teamx_domain,title+': '+time_period+' - '+'TeamX Domain' , path_figs)
+
+# TODO plot the temporal trend of the events with weekly resolution (higher?)
+# TODO plot the ranking based on the intensity of the events
+# TODO gif with events evoluton?
