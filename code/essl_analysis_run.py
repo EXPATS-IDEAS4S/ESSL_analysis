@@ -7,6 +7,7 @@ over the EXPATS and TeamX domain
 #import libraries
 import pandas as pd
 import numpy as np
+import os
 
 import essl_analysis_functions
 
@@ -24,7 +25,7 @@ path_figs = '/home/daniele/Documenti/PhD_Cologne/TeamX/figs/'
 filename_essl = path_file+'ESWD_HAIL_PRECIP_TORNADO_WIND_5-16_42-51_5_20230101-20231010_v1_6.csv'
 filename_paula_red = path_file+'Red_domain_lon11.00-11.81_lat45.40-46.95.csv'
 filename_paula_grey = path_file+'Grey_domain_lon10.7-11.5_lat45.6-46.6.csv'
-filename = path_file+'Prec_Hail_ExpatsDomain_21-22.csv'
+filename = path_file+'Prec_Hail_ExpatsDomain_21-23.csv'
 
 # open csv files
 data_essl = pd.read_csv(filename_essl, low_memory=False)
@@ -49,7 +50,7 @@ top_border = max(domain_grey[3], domain_red[3]) + padding
 teamx_domain = [left_border, right_border, bottom_border, top_border]
 
 raster_filename = 'NE1_HR_LC_SR_W_DR/NE1_HR_LC_SR_W_DR.tif'
-time_period = '2021-2022'
+time_period = '2021-2023'
 
 #plot the spatial map of the events
 
@@ -78,17 +79,39 @@ title = 'ESSL Events Location'
 #essl_analysis_functions.plot_intensity_trend(data,teamx_domain,title+': '+time_period+' - '+'TeamX Domain' , path_figs, ['2021-01-01','2022-12-31'],'W')
 
 #plot events rankings
-#title = 'ESSL Events Intensity Ranking'
-#essl_analysis_functions.plot_top_intensities(data, domain_expats,title+': '+time_period+' - '+'Expats Domain', path_figs, path_file+raster_filename)
-#essl_analysis_functions.plot_top_intensities(data, teamx_domain,title+': '+time_period+' - '+'TeamX Domain' , path_figs, path_file+raster_filename)
+# n_events = 30
+# title = 'ESSL top '+str(n_events)+' Events'
+# essl_analysis_functions.plot_top_intensities(data,domain_expats, 'PRECIP', n_events, title+': '+time_period+' - '+'Expats Domain', path_figs, path_file+raster_filename)
+# essl_analysis_functions.plot_top_intensities(data,domain_expats, 'HAIL', n_events, title+': '+time_period+' - '+'Expats Domain', path_figs, path_file+raster_filename)
 
+# essl_analysis_functions.plot_top_intensities(data, teamx_domain, 'PRECIP', n_events, title+': '+time_period+' - '+'TeamX Domain - Rain', path_figs, path_file+raster_filename)
+# essl_analysis_functions.plot_top_intensities(data, teamx_domain, 'HAIL', n_events, title+': '+time_period+' - '+'TeamX Domain - Hail', path_figs, path_file+raster_filename)
+
+#count the samples
+#title = 'Samples Count by QC Level'
+#essl_analysis_functions.plot_event_counts_by_qc_level(data, domain_expats, title+': '+time_period+' - '+'Expats Domain', path_figs)
+#essl_analysis_functions.plot_event_counts_by_qc_level(data, teamx_domain, title+': '+time_period+' - '+'TeamX Domain', path_figs)
 
 # plot daily events maps
-title = 'ESSL Daily Events Map'
-years = [2021,2022] 
-for year in years:
-    output_dir = '/home/daniele/Documenti/PhD_Cologne/TeamX/figs/Daily_cases/'+str(year)+'/'
-    essl_analysis_functions.save_daily_event_maps(data, domain_expats, title+': Expats Domain', path_file+raster_filename, output_dir, year)
-    essl_analysis_functions.save_daily_event_maps(data, teamx_domain, title+': TeamX Domain', path_file+raster_filename, output_dir, year)
+# title = 'ESSL Daily Events Map'
+# years = [2023] #[2021,2022, 2023] 
+# for year in years:
+#     output_dir = '/home/daniele/Documenti/PhD_Cologne/TeamX/figs/Daily_cases/'+str(year)+'/EXPATS/'
+#     essl_analysis_functions.save_daily_event_maps(data, domain_expats, title+': Expats Domain', path_file+raster_filename, output_dir, year)
+#     # output_dir = '/home/daniele/Documenti/PhD_Cologne/TeamX/figs/Daily_cases/'+str(year)+'/TEAMX/'
+    # essl_analysis_functions.save_daily_event_maps(data, teamx_domain, title+': TeamX Domain', path_file+raster_filename, output_dir, year)
 
-# TODO gif with daily events evoluton (then pick few days and make hour resolutuion)
+
+# gif with daily events evoluton (TODO then pick few days and make hour resolutuion)
+
+# Set the folder containing your images and the desired output GIF file name
+title = 'ESSL Daily Events Map'
+years = [2021,2022,2023] 
+for year in years:
+    folder_path = path_figs+'Daily_cases/'+str(year)+'/EXPATS/'
+    output_filename = 'animated_gif_essl_events_expats_'+str(year)+'.gif'
+    output_path = os.path.join(path_figs, output_filename)
+    essl_analysis_functions.create_gif_from_folder(folder_path, output_path, duration=0.5)  #'gif_essl_events_expats_'+str(year)
+    #folder_path = path_figs+'Daily_cases/'+str(year)+'/TEAMX/'
+    #essl_analysis_functions.create_gif_from_folder(folder_path, path_figs+'gif_essl_events_teamx_'+str(year), duration=0.5)
+

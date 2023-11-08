@@ -16,6 +16,8 @@ import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import matplotlib.gridspec as gridspec
+import os
+import imageio
 
 
 def plot_events_paula(datasets, main_domain, subdomains, intensity, raster_filename, title, path_file, path_figs):
@@ -567,18 +569,17 @@ def plot_intensity_trend(data, domain, title, path_figs, time_period, frequency=
 
 
 
-
-
-def plot_top_intensities(data, domain, title, path_figs, path_raster):
+def plot_top_intensities(data, domain, type, n_events, title, path_figs, path_raster):
     """
     Generates and saves a set of plots visualizing the top weather event intensities within a specified domain.
 
     The function filters the data for the given domain, selects the top 20 events of precipitation and hail based on intensity,
     and generates a set of bar plots for these events. Additionally, it displays the top events on a geographical map.
-
     Parameters:
     - data (DataFrame): The dataset containing weather event information including type, intensity, and coordinates.
     - domain (tuple): A tuple specifying the latitude and longitude bounds (minlat, maxlat, minlon, maxlon) for filtering the data.
+    - type (str): 'PRECIP' or 'HAIL'
+    - n_events (int): Number of events to show in the bar plot
     - title (str): The title for the plots, which also serves as the filename when saving.
     - path_figs (str): The file path where the generated plot image will be saved.
     - path_raster (str): The file path to a raster file that provides the base map for plotting events geographically.
@@ -586,6 +587,16 @@ def plot_top_intensities(data, domain, title, path_figs, path_raster):
     Returns:
     - None: This function does not return any value.
     """
+
+    if type == 'PRECIP':
+        quantity = 'PRECIPITATION_AMOUNT'
+        label_name = 'Precipitation Amount (mm)'
+        marker_size = 2
+    elif type == 'HAIL':
+        quantity = 'MAX_HAIL_DIAMETER'
+        label_name = 'Max Hail Diameter (cm)'
+        marker_size = 20
+
     minlat, maxlat, minlon, maxlon = domain
     filtered_data = data[(data['LATITUDE'] >= minlat) & (data['LATITUDE'] <= maxlat) &
                          (data['LONGITUDE'] >= minlon) & (data['LONGITUDE'] <= maxlon)]
@@ -593,83 +604,64 @@ def plot_top_intensities(data, domain, title, path_figs, path_raster):
     # Convert 'datetime' column to datetime type
     filtered_data['TIME_EVENT'] = pd.to_datetime(filtered_data['TIME_EVENT'])
 
-    # Filter top 20 for each event type based on intensity
-    top_precip = filtered_data[filtered_data['TYPE_EVENT'] == 'PRECIP'].nlargest(20, 'PRECIPITATION_AMOUNT').reset_index()
-    top_hail = filtered_data[filtered_data['TYPE_EVENT'] == 'HAIL'].nlargest(20, 'MAX_HAIL_DIAMETER').reset_index()
+    # Filter top events based on intensity
+    top_events = filtered_data[filtered_data['TYPE_EVENT'] == type].nlargest(n_events, quantity).reset_index()
 
-    # Create subplots using GridSpec
+    # Assign a unique color to each day
+    unique_days = np.unique(top_events['TIME_EVENT'].dt.date)
+    color_map = plt.cm.get_cmap('tab10', len(unique_days))  # Use a colormap with as many colors as unique days
+    day_to_color = {day: color_map(i) for i, day in enumerate(unique_days)}  # Map each day to a color
+
+    # Create figure with a specified size
     fig = plt.figure(figsize=(20, 10))
-    gs = gridspec.GridSpec(2, 2, width_ratios=[1, 2], height_ratios=[1, 1])
+    gs = gridspec.GridSpec(1, 2, width_ratios=[1, 2])
 
-    ax1 = plt.subplot(gs[0, 0])  # Top left
-    ax2 = plt.subplot(gs[1, 0])  # Bottom left
-    ax3 = plt.subplot(gs[:, 1], projection=ccrs.PlateCarree())  # Right side
-
-    # Plotting Precipitation
-    precip_bars = ax1.barh(top_precip.index, top_precip['PRECIPITATION_AMOUNT'], color='blue', alpha=0.6)
-    ax1.set_xlabel('Precipitation Amount (mm)', fontsize=14)
-    ax1.set_yticks(top_precip.index)
-    ax1.set_yticklabels(top_precip['TIME_EVENT'].dt.strftime('%Y-%m-%d %H:%M'),fontsize=12)
-    ax1.set_title('Top 20 Precipitation Intensities', fontsize=14)
+    # Bar plot
+    ax1 = plt.subplot(gs[0, 0])
+    for i, row in top_events.iterrows():
+        color = day_to_color[row['TIME_EVENT'].date()]
+        ax1.barh(i, row[quantity], color=color, alpha=0.6)
+    ax1.set_xlabel(label_name, fontsize=14)
+    ax1.set_yticks(top_events.index)
+    ax1.set_yticklabels(top_events['TIME_EVENT'].dt.strftime('%Y-%m-%d %H:%M'), fontsize=12)
+    #ax1.set_title(f'Top {n_events} {type} Events', fontsize=14)
     ax1.tick_params(axis='x', which='major', labelsize=12)
-    ax1.set_ylim(len(top_precip) - 0.5, -0.5) # Set the y-axis limits to invert them
+    ax1.set_ylim(len(top_events) - 0.5, -0.5)  # Invert the y-axis
 
-    # Plotting Hail
-    hail_bars = ax2.barh(top_hail.index, top_hail['MAX_HAIL_DIAMETER'], color='red', alpha=0.6)
-    ax2.set_xlabel('Max Hail Diameter (cm)', fontsize=14)
-    ax2.set_yticks(top_hail.index)
-    ax2.set_yticklabels(top_hail['TIME_EVENT'].dt.strftime('%Y-%m-%d %H:%M'), fontsize=12)
-    ax2.set_title('Top 20 Hail Intensities', fontsize=14)
-    ax2.tick_params(axis='x', which='major', labelsize=12)
-    ax2.set_ylim(len(top_precip) - 0.5, -0.5) # Set the y-axis limits to invert them
-
+    # Map plot
+    ax2 = plt.subplot(gs[0, 1], projection=ccrs.PlateCarree())
     # Plot raster
     with rasterio.open(path_raster) as src:
-        # Create a map plot
-        ax3.set_extent([minlon, maxlon, minlat, maxlat])
-        ax3.add_feature(cfeature.BORDERS, linestyle=':')
-        ax3.add_feature(cfeature.COASTLINE)
-        ax3.add_feature(cfeature.LAKES, alpha=0.5)
-        ax3.add_feature(cfeature.RIVERS)
+        ax2.set_extent([minlon, maxlon, minlat, maxlat])
+        ax2.add_feature(cfeature.BORDERS, linestyle=':')
+        ax2.add_feature(cfeature.COASTLINE)
+        ax2.add_feature(cfeature.LAKES, alpha=0.5)
+        ax2.add_feature(cfeature.RIVERS)
+        ax2.add_feature(cfeature.OCEAN, color='blue')
 
         extent = [src.bounds.left, src.bounds.right, src.bounds.bottom, src.bounds.top]
-        ax3.imshow(src.read(1), origin='upper', cmap='gist_earth', extent=extent, transform=ccrs.PlateCarree(), alpha=0.5, interpolation='spline36')
-        
-        ax3.add_feature(cfeature.OCEAN, color='blue')
+        ax2.imshow(src.read(1), origin='upper', cmap='gist_earth', extent=extent, transform=ccrs.PlateCarree(), alpha=0.5, interpolation='spline36')
 
-        # Add lat-lon axis tick labels
-        gl = ax3.gridlines(draw_labels=True, linewidth=0.5, color='gray', alpha=0.5, linestyle='--')
-        gl.top_labels = False
-        gl.right_labels = False
-        gl.xformatter = LONGITUDE_FORMATTER
-        gl.yformatter = LATITUDE_FORMATTER
-        gl.xlabel_style = {'size': 12, 'color': 'black'}
-        gl.ylabel_style = {'size': 12, 'color': 'black'}
+    # Plot top events on the map with colored markers
+    for i, row in top_events.iterrows():
+        color = day_to_color[row['TIME_EVENT'].date()]
+        size = row[quantity]  # Adjust this scaling as necessary for your dataset
+        ax2.scatter(row['LONGITUDE'], row['LATITUDE'], s=size*marker_size, color=color, edgecolor='black', zorder=3, transform=ccrs.Geodetic())
 
-    # Plot top events with numbers on the map
-    for i, row in top_precip.iterrows():
-        ax3.text(row['LONGITUDE'], row['LATITUDE'], str(i+1), fontsize=12, ha='center', va='center',
-                 color='blue', weight='bold', transform=ccrs.Geodetic())
-
-    for i, row in top_hail.iterrows():
-        ax3.text(row['LONGITUDE'], row['LATITUDE'], str(i+1), fontsize=12, ha='center', va='center',
-                 color='red', weight='bold', transform=ccrs.Geodetic())
-
-    # Adding a legend for the map
-    blue_patch = mpatches.Patch(color='blue', label='Precipitation')
-    red_patch = mpatches.Patch(color='red', label='Hail')
-    ax3.legend(handles=[blue_patch, red_patch], loc='lower left', fontsize=12)
+    # Adding a custom legend for the dates
+    patches = [mpatches.Patch(color=color, label=str(day)) for day, color in day_to_color.items()]
+    ax2.legend(handles=patches, loc='upper left', fontsize=12, title="Event Dates")
 
     # Adjust the title space and layout of the plots
-    fig.suptitle(title, fontsize=16, fontweight='bold')  # Reduce the pad to bring the title closer to the plots
-    plt.subplots_adjust(left=0.1, right=0.9, top=0.95, bottom=0.1, wspace=0.1, hspace=0.4)
+    fig.suptitle(title+' - '+label_name, fontsize=16, fontweight='bold')
+    plt.subplots_adjust(left=0.1, right=0.9, top=0.95, bottom=0.1, wspace=0.1, hspace=0.1)
 
-    # Save plot
-    fig.savefig(f'{path_figs}{title}.png', dpi=300, bbox_inches='tight')
+    # Save the figure
+    plt.savefig(f"{path_figs}/{title.replace(' ', '_').lower()}-{type}.png", bbox_inches='tight')
 
-    # Show plot
-    plt.tight_layout()
+    # Show the figure
     plt.show()
+
 
 
 
@@ -710,13 +702,13 @@ def save_daily_event_maps(data, domain, title, path_raster, output_dir, year, st
             ax.set_extent([minlon, maxlon, minlat, maxlat])
             ax.add_feature(cfeature.BORDERS, linestyle=':')
             ax.add_feature(cfeature.COASTLINE)
-            ax.add_feature(cfeature.LAKES, alpha=0.5)
-            ax.add_feature(cfeature.RIVERS)
+            ax.add_feature(cfeature.LAKES, alpha=0.5, color='dimgray')
+            ax.add_feature(cfeature.RIVERS, color='dimgray')
 
             extent = [src.bounds.left, src.bounds.right, src.bounds.bottom, src.bounds.top]
-            ax.imshow(src.read(1), origin='upper', cmap='gist_earth', extent=extent, transform=ccrs.PlateCarree(), alpha=0.5, interpolation='spline36')
+            ax.imshow(src.read(1), origin='upper', cmap='gist_gray', extent=extent, transform=ccrs.PlateCarree(), alpha=0.5, interpolation='spline36')
             
-            ax.add_feature(cfeature.OCEAN, color='blue')
+            ax.add_feature(cfeature.OCEAN, color='dimgray')
 
             # Add lat-lon axis tick labels
             gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='gray', alpha=0.5, linestyle='--')
@@ -731,12 +723,12 @@ def save_daily_event_maps(data, domain, title, path_raster, output_dir, year, st
         for _, row in daily_data.iterrows():
             if row['TYPE_EVENT'] == 'PRECIP':
                 marker = 'o'  # Example marker for precipitation
-                cmap = plt.cm.Blues  # Color map for precipitation
+                cmap = plt.get_cmap('winter_r') #plt.cm.Blues  # Color map for precipitation
                 norm = norm_precip  # Normalization based on precipitation
                 color = cmap(norm(row['PRECIPITATION_AMOUNT']))
             else:
                 marker = '^'  # Example marker for hail
-                cmap = plt.cm.Reds  # Color map for hail
+                cmap = plt.get_cmap('autumn_r') #plt.cm.Reds  # Color map for hail
                 norm = norm_hail  # Normalization based on hail
                 color = cmap(norm(row['MAX_HAIL_DIAMETER']))
 
@@ -745,8 +737,8 @@ def save_daily_event_maps(data, domain, title, path_raster, output_dir, year, st
     
 
         # Create a scalar mappable for the colorbar
-        sm_precip = plt.cm.ScalarMappable(cmap=plt.cm.Blues, norm=norm_precip)
-        sm_hail = plt.cm.ScalarMappable(cmap=plt.cm.Reds, norm=norm_hail)
+        sm_precip = plt.cm.ScalarMappable(cmap= 'winter_r', norm=norm_precip)
+        sm_hail = plt.cm.ScalarMappable(cmap= 'autumn_r' , norm=norm_hail)
 
         # Add the colorbars to the figure
         # Precipitation colorbar on the right
@@ -769,4 +761,85 @@ def save_daily_event_maps(data, domain, title, path_raster, output_dir, year, st
         # Save the figure
         fig.savefig(f'{output_dir}/{title}-{date_str}.png', dpi=300, bbox_inches='tight')
         plt.close(fig)  # Close the figure to free memory
+
+
+
+
+
+def plot_event_counts_by_qc_level(data, domain, title, path_figs):
+    """
+    This function filters weather event data based on a geographical domain, then calculates the count
+    of 'HAIL' and 'PRECIP' events, further breaking down the count by QC_LEVEL. It generates a stacked 
+    vertical bar plot to display these counts, saves the plot to the specified path, and shows the plot.
+
+    Parameters:
+    - data (DataFrame): The dataset containing weather event information with 'LATITUDE', 'LONGITUDE',
+                        'TYPE_EVENT', and 'QC_LEVEL' columns.
+    - domain (tuple): A tuple specifying the latitude and longitude bounds 
+                      (minlat, maxlat, minlon, maxlon) for filtering the data.
+    - title (str): The title for the plot. It is also used to name the saved plot file.
+    - path_figs (str): The file path where the generated plot image will be saved.
+
+    Returns:
+    - None: This function does not return any value.
+    """
+    minlat, maxlat, minlon, maxlon = domain
+    data = data[(data['LATITUDE'] >= minlat) & (data['LATITUDE'] <= maxlat) &
+                         (data['LONGITUDE'] >= minlon) & (data['LONGITUDE'] <= maxlon)]
+    
+    # Count the different values in 'QC_LEVEL' and the subtotal for each 'TYPE_EVENT'
+    qc_counts = data.groupby(['TYPE_EVENT', 'QC_LEVEL']).size().unstack(fill_value=0)
+    
+    # Plotting
+    fig, ax = plt.subplots(figsize=(10, 7))
+    
+    # Create a stacked bar plot for each QC level
+    bottom_values = pd.Series([0, 0], index=qc_counts.index)
+    colors = ['blue', 'green', 'red', 'purple', 'orange']  # Change/add colors as needed based on the number of QC levels
+    for i, qc_level in enumerate(qc_counts.columns):
+        count = qc_counts[qc_level].sum()
+        ax.bar(qc_counts.index, qc_counts[qc_level], bottom=bottom_values, color=colors[i], label=f'QC Level {qc_level} ({str(count)})')
+        bottom_values += qc_counts[qc_level]
+    
+    # Set the labels and title
+    ax.set_ylabel('Count')
+    #ax.set_yscale('log')
+    #ax.set_ylim(bottom=0)
+    ax.set_title(title, fontweight='bold')
+    ax.set_xticklabels(qc_counts.index, rotation=0)  # Adjust rotation if needed
+    
+    # Place the legend outside the plot to the right
+    ax.legend(title='QC Levels', loc='center left', bbox_to_anchor=(1, 0.5))
+    
+    # Adjust layout to make room for the legend
+    plt.tight_layout(rect=[0, 0, 0.85, 1])
+
+    # Save the figure
+    fig.savefig(f"{path_figs}/{title.replace(' ', '_').lower()}.png", bbox_inches='tight')
+    
+    # Show the plot
+    plt.show()
+
+
+
+
+def create_gif_from_folder(folder_path, output_path, duration=0.5):
+    """
+    Create a GIF from a sequence of images in a folder.
+
+    :param folder_path: Path to the folder containing image files.
+    :param output_path: Path where the GIF should be saved.
+    :param duration: Duration of each frame in the GIF in seconds.
+    """
+    # Get file paths
+    images = []
+    for file_name in sorted(os.listdir(folder_path)):
+        if file_name.endswith('.png') or file_name.endswith('.jpg'):
+            file_path = os.path.join(folder_path, file_name)
+            images.append(imageio.imread(file_path))
+    
+    # Save out as a GIF
+    imageio.mimsave(output_path, images, duration=duration)
+
+
 
