@@ -173,7 +173,7 @@ def plot_events_paula(datasets, main_domain, subdomains, intensity, raster_filen
 
 
 
-def plot_events(datasets, main_domain, subdomains, raster_filename, title, path_file, path_figs, plot_city):
+def plot_events(datasets, main_domain, subdomains, type, raster_filename, title, path_file, path_figs, plot_city):
     """
     Plot geographic event data on a map.
 
@@ -186,6 +186,7 @@ def plot_events(datasets, main_domain, subdomains, raster_filename, title, path_
     - datasets (list of pd.DataFrame): A list of Pandas DataFrames, each containing event data for the corresponding subdomain.
     - main_domain (tuple): A tuple containing the latitude and longitude boundaries of the main domain in the form (minlat, maxlat, minlon, maxlon).
     - subdomains (list of tuple): A list of tuples, each representing a subdomain's lat-lon boundaries as (minlat, maxlat, minlon, maxlon).
+    - Type (str): 'PRECIP' or 'HAIL'
     - raster_filename (str): Filename of the raster file to be used as a background map.
     - title (str): The title for the map plot.
     - path_file (str): Path to the directory containing the raster file.
@@ -242,18 +243,18 @@ def plot_events(datasets, main_domain, subdomains, raster_filename, title, path_
             ax.add_patch(rect)
 
             # get rain events
-            rain_data = filtered_data[filtered_data['TYPE_EVENT'] == 'PRECIP']
+            data = filtered_data[filtered_data['TYPE_EVENT'] == type ] #'PRECIP']
 
             # get hail events
-            hail_data = filtered_data[filtered_data['TYPE_EVENT'] == 'HAIL']
+            #hail_data = filtered_data[filtered_data['TYPE_EVENT'] == 'HAIL']
 
             # Convert 'datetime' column to datetime type
-            rain_data.loc[:, 'TIME_EVENT'] = pd.to_datetime(rain_data['TIME_EVENT'])
-            hail_data.loc[:, 'TIME_EVENT'] = pd.to_datetime(hail_data['TIME_EVENT'])
+            data.loc[:, 'TIME_EVENT'] = pd.to_datetime(data['TIME_EVENT'])
+            #hail_data.loc[:, 'TIME_EVENT'] = pd.to_datetime(hail_data['TIME_EVENT'])
 
             # Extract month
-            rain_data['month'] = rain_data['TIME_EVENT'].dt.month
-            hail_data['month'] = hail_data['TIME_EVENT'].dt.month
+            data['month'] = data['TIME_EVENT'].dt.month
+            #hail_data['month'] = hail_data['TIME_EVENT'].dt.month
 
             # Map each month to a color using a colormap
             #colors_list = list(mcolors.TABLEAU_COLORS.values())  # use any colormap you prefer
@@ -275,27 +276,27 @@ def plot_events(datasets, main_domain, subdomains, raster_filename, title, path_
             # Generate a list of colors
             month_to_color = {month: colors_list[month % len(colors_list)] for month in range(1, 13)}
 
-            rain_colors = rain_data['month'].map(month_to_color).tolist()
-            hail_colors = hail_data['month'].map(month_to_color).tolist()
+            colors = data['month'].map(month_to_color).tolist()
+            #hail_colors = hail_data['month'].map(month_to_color).tolist()
             
-            ax.scatter(rain_data['LONGITUDE'], rain_data['LATITUDE'], 
-            marker='o', label='RAIN', c=rain_colors, alpha=0.7,
+            ax.scatter(data['LONGITUDE'], data['LATITUDE'], 
+            marker='o', label='RAIN', c=colors, alpha=0.7,
             transform=ccrs.PlateCarree())
 
-            ax.scatter(hail_data['LONGITUDE'], hail_data['LATITUDE'], 
-            marker='^', label='HAIL', c=hail_colors, alpha=0.7,
-            transform=ccrs.PlateCarree())
+            #ax.scatter(hail_data['LONGITUDE'], hail_data['LATITUDE'], 
+            #marker='^', label='HAIL', c=hail_colors, alpha=0.7,
+            #transform=ccrs.PlateCarree())
         
         # Get unique months present in the dataframes
-        unique_rain_months = rain_data['month'].unique()
-        unique_hail_months = hail_data['month'].unique()
+        unique_months = data['month'].unique()
+        #unique_hail_months = hail_data['month'].unique()
 
         # Combine and deduplicate
-        unique_months = set(unique_rain_months).union(set(unique_hail_months))
+        #unique_months = set(unique_rain_months).union(set(unique_hail_months))
 
         # Custom legend handles for rain and hail markers
-        rain_legend = Line2D([0], [0], marker='o', color='w', markerfacecolor='gray', markersize=10, label='RAIN')
-        hail_legend = Line2D([0], [0], marker='^', color='w', markerfacecolor='gray', markersize=10, label='HAIL')
+        #rain_legend = Line2D([0], [0], marker='o', color='w', markerfacecolor='gray', markersize=10, label='RAIN')
+        #hail_legend = Line2D([0], [0], marker='^', color='w', markerfacecolor='gray', markersize=10, label='HAIL')
 
         # Custom legend handles for the unique months
         month_labels = [
@@ -303,15 +304,15 @@ def plot_events(datasets, main_domain, subdomains, raster_filename, title, path_
             "July", "August", "September", "October", "November", "December"
         ]
 
-        month_handles = [mpatches.Patch(color=month_to_color[month], label=month_labels[month-1]) 
+        handles = [mpatches.Patch(color=month_to_color[month], label=month_labels[month-1]) 
                         for month in unique_months]
 
         # Combine handles and labels
-        handles = [rain_legend, hail_legend] + month_handles
+        #handles = [rain_legend, hail_legend] + month_handles
         labels = [h.get_label() for h in handles]
 
         # add title
-        ax.set_title(title,fontsize=14,fontweight='bold')
+        ax.set_title(title+' - '+type,fontsize=14,fontweight='bold')
 
         # Display the combined legend outside the plot on the central right
         ax.legend(handles=handles, labels=labels, loc='center left', bbox_to_anchor=(1, 0.5))
@@ -319,7 +320,7 @@ def plot_events(datasets, main_domain, subdomains, raster_filename, title, path_
         # Adjust layout and show the plot
         plt.tight_layout()
         plt.show()
-        fig.savefig(path_figs+title+'.png',bbox_inches='tight')
+        fig.savefig(path_figs+title+'_'+type+'.png',bbox_inches='tight')
 
 
 
