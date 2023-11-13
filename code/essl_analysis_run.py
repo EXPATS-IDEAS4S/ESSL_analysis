@@ -59,8 +59,10 @@ title = 'ESSL Events Location'
 #essl_analysis_functions.plot_events_paula([data_paula_red,data_paula_grey], teamx_domain, [domain_red,domain_grey], False, raster_filename, title, path_file, path_figs)
 #essl_analysis_functions.plot_events_essl(data_essl, teamx_domain)
 
-#essl_analysis_functions.plot_events([data,data], teamx_domain, [domain_red,domain_grey], raster_filename, title+': '+time_period+' - '+'TeamX Domain', path_file, path_figs,True)
-#essl_analysis_functions.plot_events([data], domain_expats, [domain_expats], raster_filename, title+': '+time_period+' - '+'Expats Domain', path_file, path_figs, False)
+essl_analysis_functions.plot_events([data,data], teamx_domain, [domain_red,domain_grey], 'PRECIP', raster_filename, title+': '+time_period+' - '+'TeamX Domain', path_file, path_figs,True)
+essl_analysis_functions.plot_events([data], domain_expats, [domain_expats], 'PRECIP', raster_filename, title+': '+time_period+' - '+'Expats Domain', path_file, path_figs, False)
+essl_analysis_functions.plot_events([data,data], teamx_domain, [domain_red,domain_grey], 'HAIL', raster_filename, title+': '+time_period+' - '+'TeamX Domain', path_file, path_figs,True)
+essl_analysis_functions.plot_events([data], domain_expats, [domain_expats], 'HAIL', raster_filename, title+': '+time_period+' - '+'Expats Domain', path_file, path_figs, False)
 
 
 #plot the monthly frequency of the events
@@ -105,13 +107,13 @@ title = 'ESSL Events Location'
 # gif with daily events evoluton (TODO then pick few days and make hour resolutuion)
 
 # Set the folder containing your images and the desired output GIF file name
-title = 'ESSL Daily Events Map'
-years = [2021,2022,2023] 
-for year in years:
-    folder_path = path_figs+'Daily_cases/'+str(year)+'/EXPATS/'
-    output_filename = 'animated_gif_essl_events_expats_'+str(year)+'.gif'
-    output_path = os.path.join(path_figs, output_filename)
-    essl_analysis_functions.create_gif_from_folder(folder_path, output_path, duration=0.5)  #'gif_essl_events_expats_'+str(year)
-    #folder_path = path_figs+'Daily_cases/'+str(year)+'/TEAMX/'
-    #essl_analysis_functions.create_gif_from_folder(folder_path, path_figs+'gif_essl_events_teamx_'+str(year), duration=0.5)
+# title = 'ESSL Daily Events Map'
+# years = [2021,2022,2023] 
+# for year in years:
+#     folder_path = path_figs+'Daily_cases/'+str(year)+'/EXPATS/'
+#     output_filename = 'animated_gif_essl_events_expats_'+str(year)+'.gif'
+#     output_path = os.path.join(path_figs, output_filename)
+#     essl_analysis_functions.create_gif_from_folder(folder_path, output_path, duration=0.5)  #'gif_essl_events_expats_'+str(year)
+#     #folder_path = path_figs+'Daily_cases/'+str(year)+'/TEAMX/'
+#     #essl_analysis_functions.create_gif_from_folder(folder_path, path_figs+'gif_essl_events_teamx_'+str(year), duration=0.5)
 
