@@ -32,3 +32,23 @@ mpl.rcParams["axes.grid"] = True
 mpl.rcParams["savefig.dpi"] = 300
 mpl.rcParams["savefig.bbox"] = "tight"
 mpl.rcParams["savefig.transparent"] = True
+
+
+# colors for months
+colors_list = [
+    '#E6194B',  # Bright Red
+    '#3CB44B',  # Bright Green
+    '#800000',  # Maroon 
+    '#FFE119',  # Yellow
+    '#911EB4',  # Purple
+    '#000075',  # Dark Blue 
+    '#F032E6',  # Magenta
+    '#F58231',  # Orange
+    '#4363D8',  # Bright Blue
+    '#008080',  # Teal
+    '#E6BEFF',  # Lavender
+    '#46F0F0',  # Cyan
+    ]
+
+            
+       
