@@ -18,6 +18,8 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import matplotlib.gridspec as gridspec
 import os
 import imageio
+import seaborn as sns
+from scipy.stats import gaussian_kde
 
 
 def plot_events_paula(datasets, main_domain, subdomains, intensity, raster_filename, title, path_file, path_figs):
@@ -173,7 +175,48 @@ def plot_events_paula(datasets, main_domain, subdomains, intensity, raster_filen
 
 
 
-def plot_events(datasets, main_domain, subdomains, type, raster_filename, title, path_file, path_figs, plot_city):
+def plot_intensity_distributions(df, event_type, quantity_name, unit, save_path=None):
+    """
+    Plot distributions of precipitation and hail intensities.
+    """
+
+    # Filter valid values
+    df_event = df[(df['TYPE_EVENT'] == event_type)]   
+
+    df_event['TIME_EVENT'] = pd.to_datetime(df_event['TIME_EVENT'], errors='coerce', utc=True)
+
+    df_event['month'] = df_event['TIME_EVENT'].dt.month
+
+    df_event = df_event[(df_event['month'] >= 4) & (df_event['month'] <= 9)] 
+
+    #remove invalid valuues (negative values and nans)
+    df_event = df_event[df_event[quantity_name] >= 0]
+    df_event = df_event[df_event[quantity_name].notna()]
+
+    # Create plot
+    plt.figure(figsize=(7, 4))
+    sns.set_theme(style="whitegrid")
+
+    if not df_event.empty:
+        sns.histplot(df_event[quantity_name], bins=25, kde=False, color='dodgerblue', alpha=0.6)#, label=f'{quantity_name} ({unit})')
+
+    plt.xlabel(f"{quantity_name} ({unit})")
+    plt.ylabel("Frequency")
+    plt.title(f"Distribution of {quantity_name} ({unit})")
+    #log
+    plt.yscale('log')
+    plt.legend()
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path+f"distribution_{quantity_name}.png", dpi=300, bbox_inches='tight')
+        print(f"✅ Figure saved to {save_path}")
+
+
+
+
+
+def plot_events(datasets, main_domain, subdomains, type, raster_filename, title, path_file, path_figs, plot_city, intensity_threshold):
     """
     Plot geographic event data on a map.
 
@@ -197,7 +240,7 @@ def plot_events(datasets, main_domain, subdomains, type, raster_filename, title,
     # Extract main domain boundaries
     minlat_main, maxlat_main, minlon_main, maxlon_main = main_domain
 
-    with rasterio.open(path_file+raster_filename) as src:
+    with rasterio.open(raster_filename) as src:
         # Create a map plot
         fig, ax = plt.subplots(figsize=(12, 8),subplot_kw={'projection': ccrs.PlateCarree()})
         ax.set_extent([minlon_main, maxlon_main, minlat_main, maxlat_main])
@@ -242,20 +285,35 @@ def plot_events(datasets, main_domain, subdomains, type, raster_filename, title,
                                     fill=False, edgecolor='black', linestyle='--')
             ax.add_patch(rect)
 
-            # get rain events
-            data = filtered_data[filtered_data['TYPE_EVENT'] == type ] #'PRECIP']
+            #get the name of the intensity
+            if type=='PRECIP':
+                name_variable = 'PRECIPITATION_AMOUNT'
+            elif type == 'HAIL':
+                name_variable = 'MAX_HAIL_DIAMETER'
+ 
+            # Filter events based on type and intensity
+            data = filtered_data[(filtered_data['TYPE_EVENT'] == type) & 
+                                                (filtered_data[name_variable] > intensity_threshold)]
+            #data = filtered_data[filtered_data['TYPE_EVENT'] == type ] #'PRECIP']
 
             # get hail events
             #hail_data = filtered_data[filtered_data['TYPE_EVENT'] == 'HAIL']
 
-            # Convert 'datetime' column to datetime type
-            data.loc[:, 'TIME_EVENT'] = pd.to_datetime(data['TIME_EVENT'])
-            #hail_data.loc[:, 'TIME_EVENT'] = pd.to_datetime(hail_data['TIME_EVENT'])
+            # Convert 'TIME_EVENT' column to datetime type with a specific format
+            data['TIME_EVENT'] = pd.to_datetime(data['TIME_EVENT'], errors='coerce', utc=True)
 
-            # Extract month
-            data['month'] = data['TIME_EVENT'].dt.month
-            #hail_data['month'] = hail_data['TIME_EVENT'].dt.month
+            #data.loc[:, 'TIME_EVENT'] = pd.to_datetime(data['TIME_EVENT'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
 
+            # After ensuring conversion, extract the month
+            if pd.api.types.is_datetime64_any_dtype(data['TIME_EVENT']):
+                data['month'] = data['TIME_EVENT'].dt.month
+            else:
+                # Handle the case where 'TIME_EVENT' did not convert to datetime successfully
+                print("Conversion to datetime failed or 'TIME_EVENT' does not contain datetime values.")
+
+            #only keep months (April to September)
+            data = data[(data['month'] >= 4) & (data['month'] <= 9)]
+            
             # Map each month to a color using a colormap
             #colors_list = list(mcolors.TABLEAU_COLORS.values())  # use any colormap you prefer
             colors_list = [
@@ -276,8 +334,15 @@ def plot_events(datasets, main_domain, subdomains, type, raster_filename, title,
             # Generate a list of colors
             month_to_color = {month: colors_list[month % len(colors_list)] for month in range(1, 13)}
 
-            colors = data['month'].map(month_to_color).tolist()
+            #colors = data['month'].map(month_to_color).tolist()
             #hail_colors = hail_data['month'].map(month_to_color).tolist()
+
+            # Verify 'month' column creation
+            if 'month' in data.columns:
+                # Proceed with mapping and other operations
+                colors = data['month'].map(month_to_color).tolist()
+            else:
+                print("The 'month' column does not exist in the DataFrame.")
             
             ax.scatter(data['LONGITUDE'], data['LATITUDE'], 
             marker='o', label='RAIN', c=colors, alpha=0.7,
@@ -288,7 +353,7 @@ def plot_events(datasets, main_domain, subdomains, type, raster_filename, title,
             #transform=ccrs.PlateCarree())
         
         # Get unique months present in the dataframes
-        unique_months = data['month'].unique()
+        unique_months = np.sort(data['month'].unique())
         #unique_hail_months = hail_data['month'].unique()
 
         # Combine and deduplicate
@@ -324,6 +389,107 @@ def plot_events(datasets, main_domain, subdomains, type, raster_filename, title,
 
 
 
+
+def plot_events_with_density(datasets, main_domain, subdomains, type, raster_filename,
+                             title, path_file, path_figs, plot_city, intensity_threshold):
+    """
+    Plot event density (filled contour) + overlay high-intensity events as dots.
+    """
+
+    minlat_main, maxlat_main, minlon_main, maxlon_main = main_domain
+
+    with rasterio.open(raster_filename) as src:
+        fig, ax = plt.subplots(figsize=(12, 8), subplot_kw={'projection': ccrs.PlateCarree()})
+        ax.set_extent([minlon_main, maxlon_main, minlat_main, maxlat_main])
+        ax.add_feature(cfeature.BORDERS, linestyle=':')
+        ax.add_feature(cfeature.COASTLINE)
+        ax.add_feature(cfeature.LAKES, alpha=0.5)
+        ax.add_feature(cfeature.RIVERS)
+        ax.imshow(src.read(1), origin='upper', cmap='gist_earth',
+                  extent=[src.bounds.left, src.bounds.right, src.bounds.bottom, src.bounds.top],
+                  transform=ccrs.PlateCarree(), alpha=0.5, interpolation='spline36')
+        ax.add_feature(cfeature.OCEAN, color='blue')
+        # Collect all events to compute density later
+        all_lats, all_lons = [], []
+
+        for i, domain in enumerate(subdomains):
+            minlat, maxlat, minlon, maxlon = domain
+            data = datasets[i]
+            data = data[(data['LATITUDE'] >= minlat) & (data['LATITUDE'] <= maxlat) &
+                        (data['LONGITUDE'] >= minlon) & (data['LONGITUDE'] <= maxlon)]
+
+            # Intensity field
+            if type == 'PRECIP':
+                intensity_field = 'PRECIPITATION_AMOUNT'
+                unit = 'mm'
+            elif type == 'HAIL':
+                intensity_field = 'MAX_HAIL_DIAMETER'
+                unit = 'cm'
+            else:
+                raise ValueError("type must be 'PRECIP' or 'HAIL'")
+
+            data = data[data['TYPE_EVENT'] == type]
+            data = data.dropna(subset=['LATITUDE', 'LONGITUDE'])
+
+            data['TIME_EVENT'] = pd.to_datetime(data['TIME_EVENT'], errors='coerce', utc=True)
+
+            data['month'] = data['TIME_EVENT'].dt.month
+
+            data = data[(data['month'] >= 4) & (data['month'] <= 9)]
+
+            # Append all for density
+            all_lats.extend(data['LATITUDE'])
+            all_lons.extend(data['LONGITUDE'])
+
+            # Filter strong events only
+            strong_events = data[data[intensity_field] > intensity_threshold]
+
+            # Overlay thresholded dots
+            # ax.scatter(strong_events['LONGITUDE'], strong_events['LATITUDE'],
+            #            s=30, c='blue', marker='o', edgecolor='black',
+            #            alpha=0.9, transform=ccrs.PlateCarree(), label=f">{intensity_threshold} {unit}")
+
+        # ---- Compute and plot density map ----
+        if len(all_lons) > 50:  # at least 50 points to get smooth KDE
+            xi, yi = np.mgrid[minlon_main:maxlon_main:200j, minlat_main:maxlat_main:200j]
+            coords = np.vstack([all_lons, all_lats])
+            kde = gaussian_kde(coords, bw_method=0.05)
+            zi = kde(np.vstack([xi.flatten(), yi.flatten()]))
+            zi = zi.reshape(xi.shape)
+
+            #cf = ax.contourf(xi, yi, zi, levels=15, cmap='Reds',alpha=0.8, transform=ccrs.PlateCarree())
+            # Mask zero or near-zero values to make them transparent
+            zi_masked = np.ma.masked_where(zi <= 0.01, zi)
+
+            cf = ax.contourf(
+                xi, yi, zi_masked,
+                levels=15,
+                cmap='Reds',
+                alpha=0.8,
+                transform=ccrs.PlateCarree()
+            )
+
+
+            cbar = plt.colorbar(cf, ax=ax, orientation='vertical', shrink=0.6, pad=0.02)
+            cbar.set_label("Event Density")
+
+        # ---- Optional: Add city markers ----
+        if plot_city:
+            cities = {"Trento": [46.0667, 11.1167], "Bolzano": [46.4981, 11.3548]}
+            for name, (lat, lon) in cities.items():
+                ax.scatter(lon, lat, marker='x', color='black', s=50, transform=ccrs.PlateCarree())
+                ax.text(lon + 0.05, lat - 0.05, name, color='black', transform=ccrs.PlateCarree())
+
+        ax.set_title(f"{title} - {type}", fontsize=13, fontweight='bold')
+                     #\nDensity + Strong Events > {intensity_threshold} {unit}",
+                     
+        plt.legend(loc='upper right')
+        plt.tight_layout()
+        plt.savefig(path_figs + title + f"_{type}_density.png", bbox_inches='tight', dpi=300)
+        
+
+
+
 def plot_monthly_event_frequency(data, domain, title, path_figs):
     """
     Plots a bar chart representing the monthly frequency of precipitation and hail events within a specified geographical domain.
@@ -342,6 +508,13 @@ def plot_monthly_event_frequency(data, domain, title, path_figs):
     - None
     """
     minlat, maxlat, minlon, maxlon = domain
+
+    data['TIME_EVENT'] = pd.to_datetime(data['TIME_EVENT'], errors='coerce', utc=True)
+
+    data['month'] = data['TIME_EVENT'].dt.month
+
+    data = data[(data['month'] >= 4) & (data['month'] <= 9)]
+
     filtered_data = data[(data['LATITUDE'] >= minlat) & (data['LATITUDE'] <= maxlat) &
                          (data['LONGITUDE'] >= minlon) & (data['LONGITUDE'] <= maxlon)]
     
@@ -357,8 +530,14 @@ def plot_monthly_event_frequency(data, domain, title, path_figs):
     monthly_rain = rain_data.groupby('month').size().reset_index(name='PRECIP')
     monthly_hail = hail_data.groupby('month').size().reset_index(name='HAIL')
 
+    #print tot counts for rain and hail
+    total_rain = monthly_rain['PRECIP'].sum()
+    total_hail = monthly_hail['HAIL'].sum()
+    print(f'Total PRECIP events: {total_rain}')
+    print(f'Total HAIL events: {total_hail}')
+
     # Merge the monthly data and fill missing months with 0
-    all_months = pd.DataFrame({'month': range(1, 13)})
+    all_months = pd.DataFrame({'month': range(4, 10)})
     monthly_data = all_months.merge(monthly_rain, on='month', how='left').merge(monthly_hail, on='month', how='left').fillna(0)
 
     # Define positions for the bars
@@ -367,29 +546,33 @@ def plot_monthly_event_frequency(data, domain, title, path_figs):
     hail_positions = np.arange(len(monthly_data['month'])) + bar_width / 2
 
     # Plotting
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig, ax = plt.subplots(figsize=(10, 7))
     
     # Plot the bars side by side
     ax.bar(rain_positions, monthly_data['PRECIP'], width=bar_width, label='PRECIP', color='#1f77b4')
     ax.bar(hail_positions, monthly_data['HAIL'], width=bar_width, label='HAIL', color='#ff7f0e')
     
     # Set the x-axis labels to be the month names and rotate them for better readability
+    # month_ticks = [
+    #     "January", "February", "March", "April", "May", "June", 
+    #     "July", "August", "September", "October", "November", "December"
+    # ]
     month_ticks = [
-        "January", "February", "March", "April", "May", "June", 
-        "July", "August", "September", "October", "November", "December"
+        "April", "May", "June", 
+        "July", "August", "September"
     ]
-    ax.set_xticks(range(0, 12))
-    ax.set_xticklabels(month_ticks, rotation=45, fontsize=12)
+    ax.set_xticks(range(0, 6))
+    ax.set_xticklabels(month_ticks, rotation=45, fontsize=16)
+    # Set larger font size for y-tick labels
+    ax.tick_params(axis='y', labelsize=16)
     
     # Customize the labels and title with larger font sizes
-    ax.set_xlabel('Month', fontsize=14)
-    ax.set_ylabel('Number of Events', fontsize=14)
+    ax.set_xlabel('Month', fontsize=16)
+    ax.set_ylabel('Number of Events', fontsize=16)
     ax.set_title(title, fontsize=16)
-    ax.legend(fontsize=12)
+    ax.legend(fontsize=16)
     
     # Save the plot
-    plt.tight_layout()
-    plt.show()
     fig.savefig(path_figs + title + '.png', bbox_inches='tight')
 
 

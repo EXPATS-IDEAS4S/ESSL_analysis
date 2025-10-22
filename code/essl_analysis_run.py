@@ -16,60 +16,84 @@ from PIL import Image
 Image.MAX_IMAGE_PIXELS = None  # Disable the limit
 
 # define paths
-path_file = '/home/daniele/Documenti/PhD_Cologne/TeamX/data/'
+path_file = '/work/dcorradi/ESSL/conference_analysis_2025/' #'/home/daniele/Documenti/PhD_Cologne/TeamX/data/'
 #path_file = '/home/dcorradi/Documents/ESSL/Datasets/'
-path_figs = '/home/daniele/Documenti/PhD_Cologne/TeamX/figs/'
+path_figs = '/work/dcorradi/ESSL/conference_analysis_2025/figs/' #'/home/daniele/Documenti/PhD_Cologne/TeamX/figs/'
+os.makedirs(path_figs, exist_ok=True)
 #path_figs = 'home/dcorradi/Documents/ESSL/Figs/'
 
 #define filenames
-filename_essl = path_file+'ESWD_HAIL_PRECIP_TORNADO_WIND_5-16_42-51_5_20230101-20231010_v1_6.csv'
-filename_paula_red = path_file+'Red_domain_lon11.00-11.81_lat45.40-46.95.csv'
-filename_paula_grey = path_file+'Grey_domain_lon10.7-11.5_lat45.6-46.6.csv'
-filename = path_file+'Prec_Hail_ExpatsDomain_21-23.csv'
+#filename_essl = path_file+'ESWD_HAIL_PRECIP_TORNADO_WIND_5-16_42-51_5_20230101-20231010_v1_6.csv'
+#filename_paula_red = path_file+'Red_domain_lon11.00-11.81_lat45.40-46.95.csv'
+#filename_paula_grey = path_file+'Grey_domain_lon10.7-11.5_lat45.6-46.6.csv'
+filename = path_file+'eswd-v2-2021-2025_prec_hail_expats.csv'
 
 # open csv files
-data_essl = pd.read_csv(filename_essl, low_memory=False)
-data_paula_red = pd.read_csv(filename_paula_red)
-data_paula_grey = pd.read_csv(filename_paula_grey)
+#data_essl = pd.read_csv(filename_essl, low_memory=False)
+#data_paula_red = pd.read_csv(filename_paula_red)
+#data_paula_grey = pd.read_csv(filename_paula_grey)
 data = pd.read_csv(filename,low_memory=False)
+print(data.columns)
+print('Number of events in the dataset: ', len(data))
+
+#only get columns with with this: 'LATITUDE', 'LONGITUDE'  'QC_LEVEL',   'TIME_EVENT',  'TYPE_EVENT,   'PRECIPITATION_AMOUNT', 'MAX_HAIL_DIAMETER'
+data = data[['LATITUDE', 'LONGITUDE', 'QC_LEVEL', 'TIME_EVENT', 'TYPE_EVENT', 'PRECIPITATION_AMOUNT', 'MAX_HAIL_DIAMETER']]
+print(data.head())
 
 # define domain of interest # [minlat, maxlat, minlon, maxlon]
-domain_grey = [45.6, 46.6, 10.7, 11.5] #TeamX domain (Grey domain)
-domain_red = [46.40, 46.95, 11, 11.81] #TeamX domain (Red domain) NB: minlat is 46.40 and not 45.40 as reported in filename
+#domain_grey = [45.6, 46.6, 10.7, 11.5] #TeamX domain (Grey domain)
+#domain_red = [46.40, 46.95, 11, 11.81] #TeamX domain (Red domain) NB: minlat is 46.40 and not 45.40 as reported in filename
 domain_expats = [42, 51.5, 5, 16] #EXPATS domain
 
 # Padding value
 padding = 0.2
 
 # Determine encompassing domain
-left_border = min(domain_grey[0], domain_red[0]) - padding
-right_border = max(domain_grey[1], domain_red[1]) + padding
-bottom_border = min(domain_grey[2], domain_red[2]) - padding
-top_border = max(domain_grey[3], domain_red[3]) + padding
+left_border = domain_expats[2] - padding
+right_border = domain_expats[3] + padding
+bottom_border = domain_expats[0] - padding
+top_border = domain_expats[1] + padding
 
-teamx_domain = [left_border, right_border, bottom_border, top_border]
+domain_expats = [ bottom_border, top_border, left_border, right_border]
 
-raster_filename = 'NE1_HR_LC_SR_W_DR/NE1_HR_LC_SR_W_DR.tif'
-time_period = '2021-2023'
+raster_filename = '/work/dcorradi/ESSL/NE1_HR_LC_SR_W_DR/NE1_HR_LC_SR_W_DR.tif'
+time_period = '2021-2025'
 
-#plot the spatial map of the events
+
+
+
+############################################
+# Plot the distribution of the intensities #
+#############################################
+
+#essl_analysis_functions.plot_intensity_distributions(data, 'PRECIP', 'PRECIPITATION_AMOUNT', 'mm', save_path=path_figs)
+#essl_analysis_functions.plot_intensity_distributions(data, 'HAIL', 'MAX_HAIL_DIAMETER', 'cm', save_path=path_figs)
+
+#######################################
+# plot the spatial map of the events ##
+#######################################
+
 
 title = 'ESSL Events Location'
-#essl_analysis_functions.plot_events_paula([data_paula_red,data_paula_grey], domain_expats, [domain_red,domain_grey], False, raster_file_path)
-#essl_analysis_functions.plot_events_paula([data_paula_red,data_paula_grey], teamx_domain, [domain_red,domain_grey], False, raster_filename, title, path_file, path_figs)
-#essl_analysis_functions.plot_events_essl(data_essl, teamx_domain)
 
-essl_analysis_functions.plot_events([data,data], teamx_domain, [domain_red,domain_grey], 'PRECIP', raster_filename, title+': '+time_period+' - '+'TeamX Domain', path_file, path_figs,True)
-essl_analysis_functions.plot_events([data], domain_expats, [domain_expats], 'PRECIP', raster_filename, title+': '+time_period+' - '+'Expats Domain', path_file, path_figs, False)
-essl_analysis_functions.plot_events([data,data], teamx_domain, [domain_red,domain_grey], 'HAIL', raster_filename, title+': '+time_period+' - '+'TeamX Domain', path_file, path_figs,True)
-essl_analysis_functions.plot_events([data], domain_expats, [domain_expats], 'HAIL', raster_filename, title+': '+time_period+' - '+'Expats Domain', path_file, path_figs, False)
+#essl_analysis_functions.plot_events([data,data], teamx_domain, [domain_red,domain_grey], 'PRECIP', raster_filename, title+': '+time_period+' - '+'TeamX Domain', path_file, path_figs,True)
+#essl_analysis_functions.plot_events([data], domain_expats, [domain_expats], 'PRECIP', raster_filename, title+': '+time_period+' - '+'Expats Domain', path_file, path_figs, False, 10)
+#essl_analysis_functions.plot_events_with_density([data], domain_expats, [domain_expats], 'PRECIP', raster_filename, title+': '+time_period+' - '+'Expats Domain', path_file, path_figs, False, 100)
+#essl_analysis_functions.plot_events([data,data], teamx_domain, [domain_red,domain_grey], 'HAIL', raster_filename, title+': '+time_period+' - '+'TeamX Domain', path_file, path_figs,True)
+#essl_analysis_functions.plot_events([data], domain_expats, [domain_expats], 'HAIL', raster_filename, title+': '+time_period+' - '+'Expats Domain', path_file, path_figs, False, 1)
+#essl_analysis_functions.plot_events_with_density([data], domain_expats, [domain_expats], 'HAIL', raster_filename, title+': '+time_period+' - '+'Expats Domain', path_file, path_figs, False, 5)
 
 
-#plot the monthly frequency of the events
+    
 
-#title = 'Monthly Frequency of ESSL Events'
+###########################################
+#plot the monthly frequency of the events#
+############################################
+
+title = 'Monthly Frequency of ESSL Events'
 #essl_analysis_functions.plot_monthly_event_frequency(data,domain_expats,title+': '+time_period+' - '+'Expats Domain', path_figs)
 #essl_analysis_functions.plot_monthly_event_frequency(data,teamx_domain,title+': '+time_period+' - '+'TeamX Domain' , path_figs)
+
 
 # plot the temporal trend of the events with weekly resolution (TODO adjust the daily trend)
 #title='Weekly Occurences Trends of ESSL Events'
@@ -80,7 +104,11 @@ essl_analysis_functions.plot_events([data], domain_expats, [domain_expats], 'HAI
 #essl_analysis_functions.plot_intensity_trend(data,domain_expats,title+': '+time_period+' - '+'Expats Domain', path_figs, ['2021-01-01','2022-12-31'],'W')
 #essl_analysis_functions.plot_intensity_trend(data,teamx_domain,title+': '+time_period+' - '+'TeamX Domain' , path_figs, ['2021-01-01','2022-12-31'],'W')
 
-#plot events rankings
+
+########################
+#plot events rankings###
+########################
+
 # n_events = 30
 # title = 'ESSL top '+str(n_events)+' Events'
 # essl_analysis_functions.plot_top_intensities(data,domain_expats, 'PRECIP', n_events, title+': '+time_period+' - '+'Expats Domain', path_figs, path_file+raster_filename)
@@ -89,12 +117,22 @@ essl_analysis_functions.plot_events([data], domain_expats, [domain_expats], 'HAI
 # essl_analysis_functions.plot_top_intensities(data, teamx_domain, 'PRECIP', n_events, title+': '+time_period+' - '+'TeamX Domain - Rain', path_figs, path_file+raster_filename)
 # essl_analysis_functions.plot_top_intensities(data, teamx_domain, 'HAIL', n_events, title+': '+time_period+' - '+'TeamX Domain - Hail', path_figs, path_file+raster_filename)
 
-#count the samples
-#title = 'Samples Count by QC Level'
-#essl_analysis_functions.plot_event_counts_by_qc_level(data, domain_expats, title+': '+time_period+' - '+'Expats Domain', path_figs)
+
+##########################
+##  count the samples ###
+#########################
+
+title = 'Samples Count by QC Level'
+essl_analysis_functions.plot_event_counts_by_qc_level(data, domain_expats, title+': '+time_period+' - '+'Expats Domain', path_figs)
 #essl_analysis_functions.plot_event_counts_by_qc_level(data, teamx_domain, title+': '+time_period+' - '+'TeamX Domain', path_figs)
 
+
+
+
+##############################
 # plot daily events maps
+##############################
+
 # title = 'ESSL Daily Events Map'
 # years = [2023] #[2021,2022, 2023] 
 # for year in years:
