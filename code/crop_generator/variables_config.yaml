@@ -1,0 +1,40 @@
+# Variables configuration for MSG files
+# Each variable has metadata and recommended processing thresholds.
+# Values below are tuned from the previous defaults in the Python script.
+
+variables:
+  IR_108:
+    short_name: IR_108
+    long_name: "Infrared 10.8 µm (brightness temperature)"
+    units: K
+    derived: false
+    description: "Brightness temperature for the 10.8 µm infrared channel."
+    valid_range:
+      min: 180.0
+      max: 320.0
+    cmap: gray_r
+
+  WV_062:
+    short_name: WV_062
+    long_name: "Water vapour 6.2 µm (brightness temperature)"
+    units: K
+    derived: false
+    description: "Brightness temperature for the 6.2 µm water vapour channel."
+    valid_range:
+      min: 200.0
+      max: 260.0
+    cmap: gray_r
+
+  OT:
+    short_name: WV_062-IR_108
+    long_name: "Water vapour minus IR difference (OT)"
+    units: K
+    derived: true
+    description: "Explained Temperature difference channel commonly used as Overshooting Tops OT (WV - IR).
+      Typical recommended lower threshold (to select cold cloud tops / strong OT signal)
+      is -60 K (used in previous scripts)."
+    valid_range:
+      min: -60.0
+      max: 140.0 # upper is dataset-dependent; can be left to the processing script
+    cmap: coolwarm
+
