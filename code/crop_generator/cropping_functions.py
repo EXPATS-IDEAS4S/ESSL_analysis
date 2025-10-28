@@ -69,6 +69,59 @@ def crops_nc_fixed(ds_image, x_pixel, y_pixel, crop_positions, filename, out_pat
 
 
 
+def random_crop(ds_image, x_pixel, y_pixel, seed=None):
+    """
+    Extracts a random fixed-size crop (x_pixel × y_pixel) from the dataset.
+
+    Parameters
+    ----------
+    ds_image : xarray.Dataset or xarray.DataArray
+        The input dataset containing 'lat' and 'lon' coordinates.
+    x_pixel : int
+        Width of the crop in pixels.
+    y_pixel : int
+        Height of the crop in pixels.
+    seed : int, optional
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    ds_crop : xarray.Dataset or xarray.DataArray
+        Randomly cropped subset of the input dataset.
+    """
+
+    # Ensure lat/lon dimensions exist
+    if not {"lat", "lon"} <= set(ds_image.dims):
+        raise ValueError("Dataset must have 'lat' and 'lon' dimensions")
+
+    n_x = len(ds_image.lon)
+    n_y = len(ds_image.lat)
+
+    # Ensure crop size fits inside the dataset
+    if x_pixel > n_x or y_pixel > n_y:
+        raise ValueError("Requested crop size exceeds dataset dimensions")
+
+    # Set random seed for reproducibility
+    rng = np.random.default_rng(seed)
+
+    # Randomly select top-left corner ensuring crop fits within bounds
+    x_start = rng.integers(0, n_x - x_pixel + 1)
+    y_start = rng.integers(0, n_y - y_pixel + 1)
+
+    # Compute end indices (exclusive)
+    x_end = x_start + x_pixel
+    y_end = y_start + y_pixel
+
+    # Crop by index
+    ds_crop = ds_image.isel(
+        lon=slice(x_start, x_end),
+        lat=slice(y_start, y_end)
+    )
+
+    return ds_crop
+
+
+
 def crops_by_center(ds_image, x_pixel, y_pixel, crop_center):
     """
     Extracts a fixed-size crop centered at a given lat/lon position.
