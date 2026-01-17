@@ -1,0 +1,9 @@
+credentials_buckets.py
+
+__pycache__/
+
+nohup.out
+
+figs/
+
+code/s3_bucket_credentials.py

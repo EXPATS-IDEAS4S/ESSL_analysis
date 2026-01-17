@@ -124,27 +124,42 @@ def random_crop(ds_image, x_pixel, y_pixel, seed=None):
 
 def crops_by_center(ds_image, x_pixel, y_pixel, crop_center):
     """
-    Extracts a fixed-size crop centered at a given lat/lon position.
+    Extract a fixed-size crop (x_pixel × y_pixel) centered as close as possible 
+    to a given (lat, lon), while ensuring the crop fits fully within the dataset domain.
 
-    Returns exactly x_pixel × y_pixel pixels.
+    Parameters
+    ----------
+    ds_image : xarray.Dataset or xarray.DataArray
+        The dataset with 'lat' and 'lon' coordinates.
+    x_pixel, y_pixel : int
+        Desired crop size in pixels (width × height).
+    crop_center : tuple
+        (lat_center, lon_center) for the target crop.
+
+    Returns
+    -------
+    ds_crop : xarray.Dataset or xarray.DataArray
+        The extracted crop, always with the requested dimensions.
     """
     lat_c, lon_c = crop_center
 
-    # Find nearest pixel to the requested center
-    x_center = np.abs(ds_image.lon.values - lon_c).argmin()
-    y_center = np.abs(ds_image.lat.values - lat_c).argmin()
+    n_lat = len(ds_image.lat)
+    n_lon = len(ds_image.lon)
 
-    # Half-widths in pixels
+    # Find nearest pixel indices to the requested center
+    x_center = int(np.abs(ds_image.lon.values - lon_c).argmin())
+    y_center = int(np.abs(ds_image.lat.values - lat_c).argmin())
+
     half_x = x_pixel // 2
     half_y = y_pixel // 2
 
-    # Adjust ranges to ensure correct crop size (end-exclusive)
+    # Compute preliminary start/end indices
     if x_pixel % 2 == 0:
         x_start = x_center - half_x
-        x_end = x_center + half_x      # end-exclusive
+        x_end = x_center + half_x
     else:
         x_start = x_center - half_x
-        x_end = x_center + half_x + 1  # center included, odd size
+        x_end = x_center + half_x + 1
 
     if y_pixel % 2 == 0:
         y_start = y_center - half_y
@@ -153,19 +168,41 @@ def crops_by_center(ds_image, x_pixel, y_pixel, crop_center):
         y_start = y_center - half_y
         y_end = y_center + half_y + 1
 
-    # Clip to dataset bounds
-    x_start = max(0, x_start)
-    y_start = max(0, y_start)
-    x_end = min(len(ds_image.lon), x_end)
-    y_end = min(len(ds_image.lat), y_end)
+    # === SHIFT the window if it goes beyond boundaries ===
+    # For longitude
+    if x_start < 0:
+        shift = -x_start
+        x_start += shift
+        x_end += shift
+    elif x_end > n_lon:
+        shift = x_end - n_lon
+        x_start -= shift
+        x_end -= shift
 
-    # Index-based selection (avoids inclusive slicing ambiguity)
+    # For latitude
+    if y_start < 0:
+        shift = -y_start
+        y_start += shift
+        y_end += shift
+    elif y_end > n_lat:
+        shift = y_end - n_lat
+        y_start -= shift
+        y_end -= shift
+
+    # Clip again to be safe
+    x_start = np.clip(x_start, 0, n_lon - x_pixel)
+    x_end = x_start + x_pixel
+    y_start = np.clip(y_start, 0, n_lat - y_pixel)
+    y_end = y_start + y_pixel
+
+    # Extract crop (always fixed size)
     ds_crop = ds_image.isel(
         lon=slice(x_start, x_end),
         lat=slice(y_start, y_end)
     )
 
     return ds_crop
+
 
 
 

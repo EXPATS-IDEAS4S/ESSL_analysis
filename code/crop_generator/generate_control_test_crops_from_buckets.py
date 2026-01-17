@@ -113,7 +113,7 @@ random_control_days = non_event_days.to_series().sample(n=n_tot_events, random_s
 print(random_control_days)
 
 #loop through each event day
-for day in random_control_days:
+for i, day in enumerate(random_control_days):
     day_id = day.strftime('%Y-%m-%d')
     print(f"Processing control day: {day_id}")
     
@@ -154,7 +154,7 @@ for day in random_control_days:
         if not is_nan_ds and not is_outside_range:          
             print(f"Processing file: {file} for timestamp: {day_id}")
             # saving cropped images using a filename based on day_id and cluster_center
-            filename_to_save = str(day_id)+f"_random"
+            filename_to_save = str(day_id)+f"_{i}_random"
             #print(filename_to_save)
 
             if 'OT 'in var_names:
@@ -189,4 +189,4 @@ for day in random_control_days:
                     print(f"Saved image to {img_save_path}")
 
                     
-#nohup 1889477
+#nohup  25935

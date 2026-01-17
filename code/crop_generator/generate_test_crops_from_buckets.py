@@ -119,6 +119,11 @@ for event in events_name:
            
             #print(ds_day_var)
             #print(ds_day)
+            #check if len of lat and lon are equal to x_pixel and y_pixel
+            if len(ds_day_var['lat']) != x_pixel or len(ds_day_var['lon']) != y_pixel:
+                print(f"Skipping file '{file}' due to incorrect crop size: lat: {len(ds_day_var['lat'])}, lon: {len(ds_day_var['lon'])}")
+                continue  # Skip this file and move to the next
+            
             
             # Check if all variables in the dataset have any NaN
             is_nan_ds = any([xr.DataArray.isnull(ds_day_var[var]).any() for var in ds_day_var.data_vars])
@@ -164,4 +169,4 @@ for event in events_name:
                         convert_crops_to_images(ds_sel, x_pixel, y_pixel, filename_to_save, 'png', img_save_path, cmap, vmin, vmax, 'vmin-vmax', 'greyscale', apply_cma)
                         print(f"Saved image to {img_save_path}")
                        
-#nohup 1592793
+#nohup 77868
