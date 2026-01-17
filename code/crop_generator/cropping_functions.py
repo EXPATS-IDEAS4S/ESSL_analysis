@@ -122,11 +122,12 @@ def random_crop(ds_image, x_pixel, y_pixel, seed=None):
 
 
 
+import numpy as np
+
 def crops_by_center(ds_image, x_pixel, y_pixel, crop_center):
     """
     Extracts a fixed-size crop centered at a given lat/lon position.
-
-    Returns exactly x_pixel × y_pixel pixels.
+    Always returns exactly x_pixel × y_pixel pixels, even at dataset edges.
     """
     lat_c, lon_c = crop_center
 
@@ -134,38 +135,43 @@ def crops_by_center(ds_image, x_pixel, y_pixel, crop_center):
     x_center = np.abs(ds_image.lon.values - lon_c).argmin()
     y_center = np.abs(ds_image.lat.values - lat_c).argmin()
 
-    # Half-widths in pixels
+    # Half-widths
     half_x = x_pixel // 2
     half_y = y_pixel // 2
 
-    # Adjust ranges to ensure correct crop size (end-exclusive)
-    if x_pixel % 2 == 0:
-        x_start = x_center - half_x
-        x_end = x_center + half_x      # end-exclusive
-    else:
-        x_start = x_center - half_x
-        x_end = x_center + half_x + 1  # center included, odd size
+    # Initial crop indices
+    x_start = x_center - half_x
+    x_end = x_start + x_pixel
+    y_start = y_center - half_y
+    y_end = y_start + y_pixel
 
-    if y_pixel % 2 == 0:
-        y_start = y_center - half_y
-        y_end = y_center + half_y
-    else:
-        y_start = y_center - half_y
-        y_end = y_center + half_y + 1
+    # Adjust for edges (preserve crop size)
+    if x_start < 0:
+        x_end -= x_start  # shift right
+        x_start = 0
+    if x_end > len(ds_image.lon):
+        x_start -= (x_end - len(ds_image.lon))
+        x_end = len(ds_image.lon)
 
-    # Clip to dataset bounds
+    if y_start < 0:
+        y_end -= y_start  # shift down
+        y_start = 0
+    if y_end > len(ds_image.lat):
+        y_start -= (y_end - len(ds_image.lat))
+        y_end = len(ds_image.lat)
+
+    # Final safety clamp
     x_start = max(0, x_start)
     y_start = max(0, y_start)
-    x_end = min(len(ds_image.lon), x_end)
-    y_end = min(len(ds_image.lat), y_end)
 
-    # Index-based selection (avoids inclusive slicing ambiguity)
+    # Extract crop
     ds_crop = ds_image.isel(
-        lon=slice(x_start, x_end),
-        lat=slice(y_start, y_end)
+        lon=slice(int(x_start), int(x_end)),
+        lat=slice(int(y_start), int(y_end))
     )
 
     return ds_crop
+
 
 
 
@@ -404,40 +410,48 @@ def convert_crops_to_images(ds_image, x_pixel, y_pixel, filename, format, out_pa
 
     os.makedirs(out_dir, exist_ok=True)
 
-    times = ds_image['time'].values
-
-    for t in times:
-        #select the timestamp
-        ds_time = ds_image.sel(time=t)
+    #check if time dimension is present
+    if 'time' not in ds_image.dims:
         #save the images
-        fig = create_fig(ds_time.values.squeeze(),[x_pixel,y_pixel], cmap, vmin, vmax)
-
-        #save using t with yyymmddhhmm format
-        t = np.datetime_as_string(t, unit='m').replace('-', '').replace(':', '')
-        crop_filepath = f'{out_dir}/{filename}_{t}.{format}'
-
+        fig = create_fig(ds_image.values.squeeze(),[x_pixel,y_pixel], cmap, vmin, vmax)
+        crop_filepath = f'{out_dir}/{filename}.{format}'
         fig.savefig(crop_filepath, dpi=1)
-
         print(f'{crop_filepath} is saved')
+        convert_image(crop_filepath, color_mode)
+    else:
+        times = ds_image['time'].values
+        for t in times:
+            #select the timestamp
+            ds_time = ds_image.sel(time=t)
+            #save the images
+            fig = create_fig(ds_time.values.squeeze(),[x_pixel,y_pixel], cmap, vmin, vmax)
+            #save using t with yyymmddhhmm format
+            t = np.datetime_as_string(t, unit='m').replace('-', '').replace(':', '')
+            crop_filepath = f'{out_dir}/{filename}_{t}.{format}'
+            fig.savefig(crop_filepath, dpi=1)
+            print(f'{crop_filepath} is saved')
+            convert_image(crop_filepath, color_mode)
 
-        # Open the saved image for conversion
-        image = PIL.Image.open(crop_filepath)
 
-        # Convert based on the specified color mode
-        if color_mode == 'RGB':
-            converted_image = image.convert('RGB')
-            converted_image.save(crop_filepath)
-            print(f'{crop_filepath} converted to RGB')
-        elif color_mode == 'greyscale':
-            converted_image = image.convert('L')  # 'L' mode is greyscale in PIL
-            converted_image.save(crop_filepath)
-            print(f'{crop_filepath} converted to greyscale')
-        else: 
-            print('color mode not recognized!')
+def convert_image(crop_filepath, color_mode):
+    # Open the saved image for conversion
+    image = PIL.Image.open(crop_filepath)
 
-        # Close the image to free resources
-        converted_image.close()
-        image.close()
+    # Convert based on the specified color mode
+    if color_mode == 'RGB':
+        converted_image = image.convert('RGB')
+        converted_image.save(crop_filepath)
+        print(f'{crop_filepath} converted to RGB')
+    elif color_mode == 'greyscale':
+        converted_image = image.convert('L')  # 'L' mode is greyscale in PIL
+        converted_image.save(crop_filepath)
+        print(f'{crop_filepath} converted to greyscale')
+    else: 
+        print('color mode not recognized!')
+
+    # Close the image to free resources
+    converted_image.close()
+    image.close()
 
 
 
@@ -526,20 +540,30 @@ def apply_cma_mask(ds_day, ds_day_var, value_max):#, only_108=True):
     
     structure = np.ones((3, 3), dtype=np.uint8)
 
-    for t in ds_day['time']:
-        cma_slice = ds_day['cma'].sel(time=t).values
+    #check if time dimension is present
+    if 'time' not in ds_day.dims:
+        cma_slice = ds_day['cma'].values
         closed_cma = binary_closing(cma_slice, structure=structure)
-
-        # if only_108:
-        #     # Only apply mask to 'IR_108'
-        #     ir_108_slice = ds_day_var['IR_108'].sel(time=t)
-        #     masked_ir_108 = ir_108_slice.where(closed_cma == 1, value_max[0])
-        #     ds_day_var['IR_108'].loc[dict(time=t)] = masked_ir_108
-        # else:
-        # Apply mask to all variables in ds_day_var, apply for each variable the corresponding value_max
-        for var, val_mask in zip(ds_day_var.data_vars, value_max):
-            var_slice = ds_day_var[var].sel(time=t)
-            masked_var = var_slice.where(closed_cma == 1, val_mask)
-            ds_day_var[var].loc[dict(time=t)] = masked_var
         
+        for var, val_mask in zip(ds_day_var.data_vars, value_max):
+            var_slice = ds_day_var[var]
+            masked_var = var_slice.where(closed_cma == 1, val_mask)
+            ds_day_var[var] = masked_var
+    else:
+        for t in ds_day['time']:
+            cma_slice = ds_day['cma'].sel(time=t).values
+            closed_cma = binary_closing(cma_slice, structure=structure)
+
+            # if only_108:
+            #     # Only apply mask to 'IR_108'
+            #     ir_108_slice = ds_day_var['IR_108'].sel(time=t)
+            #     masked_ir_108 = ir_108_slice.where(closed_cma == 1, value_max[0])
+            #     ds_day_var['IR_108'].loc[dict(time=t)] = masked_ir_108
+            # else:
+            # Apply mask to all variables in ds_day_var, apply for each variable the corresponding value_max
+            for var, val_mask in zip(ds_day_var.data_vars, value_max):
+                var_slice = ds_day_var[var].sel(time=t)
+                masked_var = var_slice.where(closed_cma == 1, val_mask)
+                ds_day_var[var].loc[dict(time=t)] = masked_var
+            
     return ds_day_var
