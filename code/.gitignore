@@ -1,0 +1,6 @@
+
+# pycache in all subfolders
+__pycache__/
+
+# all files called credentials_buckets.py in all the subfolders
+credentials_buckets.py

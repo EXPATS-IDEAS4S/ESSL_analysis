@@ -1,0 +1,16 @@
+boto3
+cartopy
+haversine
+imageio
+matplotlib
+numpy
+pandas
+Pillow
+PyYAML
+rasterio
+scikit-learn
+scipy
+seaborn
+tqdm
+torch
+xarray
