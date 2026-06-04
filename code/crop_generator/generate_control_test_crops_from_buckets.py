@@ -114,7 +114,11 @@ random_control_days = non_event_days.to_series().sample(n=n_tot_events, random_s
 print(random_control_days)
 
 #loop through each event day
+<<<<<<< HEAD
 for idx, day in enumerate(random_control_days):
+=======
+for i, day in enumerate(random_control_days):
+>>>>>>> d4fc4d474ff0ca1cb2d3c3b37981f7d7d0a20128
     day_id = day.strftime('%Y-%m-%d')
     print(f"Processing control day: {day_id}")
     
@@ -161,8 +165,17 @@ for idx, day in enumerate(random_control_days):
             #print(ds_var_t.dims)
             #print(ds_t.dims)
 
+<<<<<<< HEAD
             # Check if all variables in the dataset have any NaN
             is_nan_ds = any([xr.DataArray.isnull(ds_var_t[var]).any() for var in ds_var_t.data_vars])
+=======
+        #if there are no Nan, the months is between April and September 
+        if not is_nan_ds and not is_outside_range:          
+            print(f"Processing file: {file} for timestamp: {day_id}")
+            # saving cropped images using a filename based on day_id and cluster_center
+            filename_to_save = str(day_id)+f"_{i}_random"
+            #print(filename_to_save)
+>>>>>>> d4fc4d474ff0ca1cb2d3c3b37981f7d7d0a20128
 
             # Check if the dataset has values outside the defined range
             is_outside_range = any([((ds_var_t[var] < values_min[i]) | (ds_var_t[var] > values_max[i])).any() for i,var in enumerate(ds_var_t.data_vars)])
@@ -209,4 +222,8 @@ for idx, day in enumerate(random_control_days):
                     print(f"Saved image to {img_save_path}")
 
                     
+<<<<<<< HEAD
 #nohup  173181
+=======
+#nohup  25935
+>>>>>>> d4fc4d474ff0ca1cb2d3c3b37981f7d7d0a20128

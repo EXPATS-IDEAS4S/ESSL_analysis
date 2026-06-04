@@ -16,7 +16,7 @@ from PIL import Image
 Image.MAX_IMAGE_PIXELS = None  # Disable the limit
 
 # define paths
-path_file = '/work/dcorradi/ESSL/conference_analysis_2025/' #'/home/daniele/Documenti/PhD_Cologne/TeamX/data/'
+path_file = '/work/dcorradi/ESSL/1st_paper/' #'/home/daniele/Documenti/PhD_Cologne/TeamX/data/'
 #path_file = '/home/dcorradi/Documents/ESSL/Datasets/'
 path_figs = '/work/dcorradi/ESSL/conference_analysis_2025/figs/' #'/home/daniele/Documenti/PhD_Cologne/TeamX/figs/'
 os.makedirs(path_figs, exist_ok=True)
@@ -26,7 +26,7 @@ os.makedirs(path_figs, exist_ok=True)
 #filename_essl = path_file+'ESWD_HAIL_PRECIP_TORNADO_WIND_5-16_42-51_5_20230101-20231010_v1_6.csv'
 #filename_paula_red = path_file+'Red_domain_lon11.00-11.81_lat45.40-46.95.csv'
 #filename_paula_grey = path_file+'Grey_domain_lon10.7-11.5_lat45.6-46.6.csv'
-filename = path_file+'eswd-v2-2021-2025_prec_hail_expats.csv'
+filename = path_file+'eswd-v2-2012-2025_expats.csv'
 
 # open csv files
 #data_essl = pd.read_csv(filename_essl, low_memory=False)
@@ -39,6 +39,9 @@ print('Number of events in the dataset: ', len(data))
 #only get columns with with this: 'LATITUDE', 'LONGITUDE'  'QC_LEVEL',   'TIME_EVENT',  'TYPE_EVENT,   'PRECIPITATION_AMOUNT', 'MAX_HAIL_DIAMETER'
 data = data[['LATITUDE', 'LONGITUDE', 'QC_LEVEL', 'TIME_EVENT', 'TYPE_EVENT', 'PRECIPITATION_AMOUNT', 'MAX_HAIL_DIAMETER']]
 print(data.head())
+#print TIME_EVENT column
+print(data['TIME_EVENT'])
+
 
 # define domain of interest # [minlat, maxlat, minlon, maxlon]
 #domain_grey = [45.6, 46.6, 10.7, 11.5] #TeamX domain (Grey domain)

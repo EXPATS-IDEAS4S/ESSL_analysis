@@ -122,8 +122,6 @@ def random_crop(ds_image, x_pixel, y_pixel, seed=None):
 
 
 
-import numpy as np
-
 def crops_by_center(ds_image, x_pixel, y_pixel, crop_center):
     """
     Extracts a fixed-size crop centered at a given lat/lon position.
@@ -131,9 +129,12 @@ def crops_by_center(ds_image, x_pixel, y_pixel, crop_center):
     """
     lat_c, lon_c = crop_center
 
-    # Find nearest pixel to the requested center
-    x_center = np.abs(ds_image.lon.values - lon_c).argmin()
-    y_center = np.abs(ds_image.lat.values - lat_c).argmin()
+    n_lat = len(ds_image.lat)
+    n_lon = len(ds_image.lon)
+
+    # Find nearest pixel indices to the requested center
+    x_center = int(np.abs(ds_image.lon.values - lon_c).argmin())
+    y_center = int(np.abs(ds_image.lat.values - lat_c).argmin())
 
     # Half-widths
     half_x = x_pixel // 2
