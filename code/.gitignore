@@ -4,3 +4,8 @@ __pycache__/
 
 # all files called credentials_buckets.py in all the subfolders
 credentials_buckets.py
+
+# nohup logs in any subfolder
+nohup.out
+
+

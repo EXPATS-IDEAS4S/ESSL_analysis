@@ -1,3 +1,20 @@
+"""Generate cropped test samples from bucket-hosted MSG files.
+
+This script processes per-event summary CSV files and uses the listed event
+dates and cluster centers to locate the corresponding daily MSG NetCDF files in
+an S3 bucket. For each timestamp in a day file, it:
+
+1. extracts the requested variables,
+2. crops the data around the event center,
+3. filters out crops with NaNs or values outside the configured valid ranges,
+4. optionally applies the CMA mask,
+5. writes the cropped dataset back to NetCDF, and
+6. optionally saves preview images for each variable.
+
+The script is intended for preparing a small test dataset for later inspection
+and downstream analysis, not for general-purpose batch processing.
+"""
+
 import os
 import io
 import boto3
