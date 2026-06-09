@@ -1,7 +1,8 @@
 import logging
 from botocore.exceptions import ClientError
 
-
+import boto3
+from credentials_buckets import S3_BUCKET_NAME, S3_ACCESS_KEY, S3_SECRET_ACCESS_KEY, S3_ENDPOINT_URL
 
 def _print_event_day_summary(df, label):
     """
@@ -84,3 +85,15 @@ def list_all_bucket_objects(s3_client, bucket, prefix=None, verbose=True):
     return all_objects
 
 
+
+def init_s3():
+    """
+    Initializes and returns an S3 client using the provided credentials and endpoint.
+    """
+
+    return boto3.client(
+        's3',
+        endpoint_url=S3_ENDPOINT_URL,
+        aws_access_key_id=S3_ACCESS_KEY,
+        aws_secret_access_key=S3_SECRET_ACCESS_KEY, 
+    )
