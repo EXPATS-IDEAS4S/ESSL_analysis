@@ -1,10 +1,10 @@
 """""
 
-This script reads the file /sat_data/output?grl?csv/eswd-v2-2012-2025_expats.csv and derives a list of case studies
-for the years 2025 based on the criteria that:
+This script reads the file /sat_data/output/grl/csv/eswd-v2-2012-2025_expats.csv and derives a list of case studies
+for the years 2025 to be used for test in the grl2026 publication, based on the criteria that:
 - the cases should be from the year 2025
-- the cases should have generated a large number of reports
-- the cases should be localized in the po valley mainly
+- the cases should have generated a large number of reports (>80 reports in a day)
+- the cases should be localized in the po valley mainly ( not really posed as a condition a the moment, but we can check the lat and lon of the reports to select only those cases that are localized in the po valley)
 - it classifies the case based on the number and type of reports (rain, hail)
 
 Once selected the cases, the code stores the data as rows of video sequences:
@@ -74,20 +74,20 @@ print(reports_per_day.sort_values(by="num_reports", ascending=False).head(50))
 
 # for each date, read the column "TYPE_EVENT" and count the number of reports with type PRECIP and the number of reports with type HAIL and assign 
 # precip only if more than 80% of the reports are PRECIP
+# selecting cases with more than 50 reports in a day
+thr_reports = 20
 case_studies = []
 for index, row in reports_per_day.iterrows():
     date = row["date"]
     num_reports = row["num_reports"]
-    if num_reports > 80:
+    if num_reports > thr_reports:
         day_reports = eswd_2025_df[eswd_2025_df["date"] == date]
         num_precip = day_reports[day_reports["TYPE_EVENT"] == "PRECIP"].shape[0]
         num_hail = day_reports[day_reports["TYPE_EVENT"] == "HAIL"].shape[0]
         if num_precip / num_reports > 0.8:
             case_type = "PRECIP"
-        elif num_hail / num_reports > 0.8:
-            case_type = "HAIL"
         else:
-            case_type = "MIXED"
+            case_type = "HAIL"
         case_studies.append({
             "date": date,
             "num_reports": num_reports,
@@ -112,10 +112,24 @@ for case in case_studies:
     duration_hours = (end_time_dt - start_time_dt).total_seconds() / 3600
     case["duration_hours"] = duration_hours
 
+    # calculate start and end lat and lon by reading the lat and lon of the first and last report of the day 
+    start_lat = day_reports["LATITUDE"].iloc[0]
+    start_lon = day_reports["LONGITUDE"].iloc[0]
+    end_lat = day_reports["LATITUDE"].iloc[-1]
+    end_lon = day_reports["LONGITUDE"].iloc[-1]
+    case["start_lat"] = start_lat
+    case["start_lon"] = start_lon
+    case["end_lat"] = end_lat
+    case["end_lon"] = end_lon
 
-# write all days with more than 80 reports in a csv file, with lines containing
+
+# write all days with more than 50 reports in a csv file, with lines containing
 # data, start time, end time, lat, lon, number of reports, number of rain reports, number of hail reports, duration of the case, case type 
 output_filename = "essl_cases_2025_grl.csv"
 case_studies_df = pd.DataFrame(case_studies)
+
+# sort cases by number of reports
+case_studies_df = case_studies_df.sort_values(by="num_reports", ascending=False)
+
 case_studies_df.to_csv(os.path.join(output_dir, output_filename), index=False)
 print(f"Case studies saved to {output_filename}")
