@@ -38,3 +38,14 @@ variables:
       max: 140.0 # upper is dataset-dependent; can be left to the processing script
     cmap: coolwarm
 
+
+  cma:
+    short_name: cma
+    long_name: "Cloud Mask Algorithm (CMA)"
+    units: "N/A"
+    derived: false
+    description: "Cloud Mask Algorithm (CMA) output, indicating cloud presence and confidence."
+    valid_range:
+      min: 0
+      max: 1
+    cmap: tab10
