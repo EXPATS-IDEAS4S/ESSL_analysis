@@ -46,23 +46,23 @@ Output filename pattern:
     YYYYMMDD_HHMM-HHMM_eulerian_viewNNN_chunkNNN_nNN_IR_108
 
 Eulerian NetCDF:
-  /sat_data/crops/GRL_testing_crops/YYYY-MM-DD/nc/eulerian/view_NNN/
+  /sat_data/crops/GRL_testing_crops/run2/YYYY-MM-DD/
   YYYYMMDD_HHMM-HHMM_eulerian_viewNNN_chunkNNN_nNN_IR_108.nc
 
-MP4 videos:
-    Only IR_108_masked videos are saved. Display range is 240-320 K; masked
-    non-cloud pixels are black.
+Optional MP4 videos:
+    Only IR_108_masked videos are saved when save_video=True. Display range is
+    240-320 K; masked non-cloud pixels are black.
 
-Eulerian videos:
-  /sat_data/crops/GRL_testing_crops/YYYY-MM-DD/videos/eulerian/IR_108_masked/
+Optional eulerian videos:
+  /sat_data/crops/GRL_testing_crops/run2/YYYY-MM-DD/videos/eulerian/IR_108_masked/
   view_NNN/mp4_vmin-vmax_greyscale_CMA/
 
-Eulerian maps:
-  /sat_data/crops/GRL_testing_crops/YYYY-MM-DD/videos/eulerian/maps/view_NNN/
+Optional eulerian maps:
+  /sat_data/crops/GRL_testing_crops/run2/YYYY-MM-DD/videos/eulerian/maps/view_NNN/
   mp4_vmin-vmax_greyscale_CMA/
 
-Maps include the raw IR_108 first frame for the sequence/view, BT108 colorbar,
-DEM/orography contours up to 4000 m, ESWD reports, and crop footprints.
+With the default save_video=False and save_plots=False settings, run2 contains
+only date folders, and each date folder contains only NetCDF crop chunks.
 
 author: Claudia Acquistapace
 date: 2026-06-09
@@ -648,9 +648,7 @@ def save_crop_chunk(
         f"view{view_spec['view_id']:03d}_chunk{chunk_start_index:03d}_n{len(crop_chunk):02d}_IR_108"
     )
 
-    save_dir = os.path.join(
-        outpath_crops, date, file_extension, 'eulerian', f"view_{view_spec['view_id']:03d}"
-    )
+    save_dir = os.path.join(outpath_crops, date)
     os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(save_dir, f"{filename_to_save}.{file_extension}")
     ds_chunk.to_netcdf(save_path)
@@ -696,7 +694,7 @@ def save_crop_chunk(
 
 
 
-def main():
+def main(save_video=False, save_plots=False):
 
     # Initialize the S3 client
     s3 = aux_func.init_s3()
@@ -731,8 +729,6 @@ def main():
 
     apply_cma = True #if True, the cma variable will be included in the crops
     file_extension = 'nc'  # File extension for the dataset files
-    save_video = True
-    save_plots = True
     chunk_size = 8
 
     # load orography from DEM only when map plots are requested
@@ -928,7 +924,7 @@ if __name__ == "__main__":
     save_video = False
     save_plots = False  
 
-    main()
+    main(save_video=save_video, save_plots=save_plots)
 
 
 
