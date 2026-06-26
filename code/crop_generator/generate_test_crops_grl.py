@@ -2,21 +2,14 @@
 Generate GRL 2026 test crops from MSG satellite data for the ESSL case list.
 
 For each case in the input case CSV, the script reads one daily MSG NetCDF file,
-selects the case time window, and creates 100 x 100 pixel crop sequences in two
-modes:
+selects the case time window, and creates 100 x 100 pixel crop sequences in
+eulerian mode.
 
-1. Lagrangian mode
-   - One moving crop sequence per case.
-   - The crop follows the case from start_lat/start_lon to end_lat/end_lon.
-   - If the start and end report locations fit inside the first crop, the crop
-     center remains fixed at the start location.
-
-2. Eulerian mode
-   - A fixed grid of numbered crop views covers as much of the EXPATS domain as
-     possible: lon 5-16, lat 42-51.5.
-   - Each numbered view is cropped at every timestamp.
-   - The view number is plotted on the eulerian map so each video can be traced
-     back to its domain location.
+- A fixed grid of numbered crop views covers as much of the EXPATS domain as
+    possible: lon 5-16, lat 42-51.5.
+- Each numbered view is cropped at every timestamp.
+- The view number is plotted on the eulerian map so each video can be traced
+    back to its domain location.
 
 Processed variables
 -------------------
@@ -43,30 +36,22 @@ Input files
 Output files
 ------------
 Base output directory:
-  /sat_data/crops/GRL_testing_crops
+  /sat_data/crops/GRL_testing_crops/run2
 
 NetCDF chunks are saved with data variables on fixed dimensions
 (time, y, x), where y = 100 and x = 100. Geographic coordinates are stored as
 lat(time, y), lon(time, x), plus crop_center_lat(time) and crop_center_lon(time).
 
 Output filename pattern:
-  YYYYMMDD_HHMM-HHMM_<mode>[_viewNNN]_chunkNNN_nNN_IR_108
-
-Lagrangian NetCDF:
-  /sat_data/crops/GRL_testing_crops/YYYY-MM-DD/nc/lagrangian/
-  YYYYMMDD_HHMM-HHMM_lagrangian_chunkNNN_nNN_IR_108.nc
+    YYYYMMDD_HHMM-HHMM_eulerian_viewNNN_chunkNNN_nNN_IR_108
 
 Eulerian NetCDF:
   /sat_data/crops/GRL_testing_crops/YYYY-MM-DD/nc/eulerian/view_NNN/
   YYYYMMDD_HHMM-HHMM_eulerian_viewNNN_chunkNNN_nNN_IR_108.nc
 
 MP4 videos:
-  Only IR_108_masked videos are saved. Display range is 240-320 K; masked
-  non-cloud pixels are black.
-
-Lagrangian videos and maps:
-  /sat_data/crops/GRL_testing_crops/YYYY-MM-DD/videos/lagrangian/IR_108_masked/
-  sequence/mp4_vmin-vmax_greyscale_CMA/
+    Only IR_108_masked videos are saved. Display range is 240-320 K; masked
+    non-cloud pixels are black.
 
 Eulerian videos:
   /sat_data/crops/GRL_testing_crops/YYYY-MM-DD/videos/eulerian/IR_108_masked/
@@ -116,61 +101,6 @@ OROGRAPHY_VARIABLE_CANDIDATES = (
 def parse_utc_time_as_naive(timestamp):
     """Return a timezone-naive UTC timestamp for xarray datetime64 slicing."""
     return pd.to_datetime(timestamp, utc=True).tz_convert(None)
-
-
-
-def define_lagrangian_crop_centers(
-    ds_day_var, x_pixel, y_pixel,
-    lat_start, lon_start, lat_end, lon_end,
-    num_timestamps
-):
-    """"
-    Define crop centers for the lagrangian crops, based on the start and end location of the case
-        and the number of timestamps in the data.
-        -  If start and end centers are both in the frame centered on lat start lon start, 
-        then we can generate crops centered on the start location for all timestamps.
-        -  If start and end centers are not in the frame centered on lat start lon start, 
-        then we need to generate crops centered as follows: 
-            - the first and last timestamp will be used to generate crops centered on the start and end location of the case, respectively. 
-            - the other timestamps will be used to generate crops centered on the intermediate locations of the case, by interpolating linearly between the start and end location of the case.
-    Input:
-    - ds_day_var: xarray dataset containing the satellite data for the day of the case
-    - x_pixel, y_pixel: size of the crops in pixels
-    - lat_start, lon_start: latitude and longitude of the start location of the case
-    - lat_end, lon_end: latitude and longitude of the end location of the case
-    - num_timestamps: number of timestamps in the data
-
-    Output:
-    - crop_centers: list of tuples (lat, lon) of the crop centers for each timestamp in the data
-
-    """
-
-    # define crop centered in the start location
-    start_crop = crops_by_center(ds_day_var.isel(time=0), x_pixel, y_pixel, (lat_start, lon_start))
-
-    # check if the end location is in the frame centered on the start location
-    if (lat_end >= start_crop.lat.min() and lat_end <= start_crop.lat.max() and
-        lon_end >= start_crop.lon.min() and lon_end <= start_crop.lon.max()):   
-        # if the end location is in the frame centered on the start location, we can generate crops centered on the start location for all timestamps
-        crop_centers = [(lat_start, lon_start)] * num_timestamps
-    else:
-        # if the end location is not in the frame centered on the start location, we need to generate crops centered as follows: 
-        # - the first and last timestamp will be used to generate crops centered on the start and end location of the case, respectively. 
-        # - the other timestamps will be used to generate crops centered on the intermediate locations of the case, by interpolating
-        # linearly between the start and end location of the case.
-
-        crop_centers = []
-        for i in range(num_timestamps):
-            if i == 0:
-                crop_centers.append((lat_start, lon_start))
-            elif i == num_timestamps - 1:
-                crop_centers.append((lat_end, lon_end))
-            else:
-                lat_i = lat_start + (lat_end - lat_start) * i / (num_timestamps - 1)
-                lon_i = lon_start + (lon_end - lon_start) * i / (num_timestamps - 1)
-                crop_centers.append((lat_i, lon_i))
-
-    return crop_centers
 
 
 def tile_start_indices(idx_min, idx_max, crop_size, n_points):
@@ -398,22 +328,6 @@ def save_crop_video(ds_image, filename, out_path, vmin, vmax, fps=5, reverse=Tru
     print(f"Saved video to {video_path}")
 
 
-def interpolate_rgb(start_color, end_color, fraction):
-    """Interpolate between two RGB colors."""
-    return tuple(
-        int(start + (end - start) * fraction)
-        for start, end in zip(start_color, end_color)
-    )
-
-
-def lonlat_to_pixel(lon, lat, domain, map_width, map_height, margin):
-    """Project lon/lat to image pixels using a simple rectangular lon/lat map."""
-    lon_min, lon_max, lat_min, lat_max = domain
-    x = margin + (lon - lon_min) / (lon_max - lon_min) * (map_width - 2 * margin)
-    y = map_height - margin - (lat - lat_min) / (lat_max - lat_min) * (map_height - 2 * margin)
-    return int(round(x)), int(round(y))
-
-
 def find_orography_field(ds):
     """Return the first orography-like field in a dataset, if one is available."""
     lower_name_map = {name.lower(): name for name in ds.data_vars}
@@ -502,35 +416,6 @@ def draw_orography(image, domain, map_width, map_height, margin, orography):
     image.paste(oro_rgb, (margin, margin))
 
 
-def draw_reports(draw, reports_df, domain, map_width, map_height, margin):
-    """Draw ESWD reports on the map, using marker shape/color by event type."""
-    if reports_df is None or reports_df.empty:
-        return
-
-    lon_min, lon_max, lat_min, lat_max = domain
-    reports = reports_df[
-        (reports_df['LONGITUDE'] >= lon_min) & (reports_df['LONGITUDE'] <= lon_max) &
-        (reports_df['LATITUDE'] >= lat_min) & (reports_df['LATITUDE'] <= lat_max)
-    ]
-    if reports.empty:
-        return
-
-    for _, report in reports.iterrows():
-        x, y = lonlat_to_pixel(report['LONGITUDE'], report['LATITUDE'], domain, map_width, map_height, margin)
-        event_type = str(report.get('TYPE_EVENT', '')).upper()
-
-        if event_type == 'HAIL':
-            color = (225, 118, 28)
-            points = [(x, y - 6), (x - 6, y + 5), (x + 6, y + 5)]
-            draw.polygon(points, fill=color, outline=(40, 40, 40))
-        elif event_type == 'PRECIP':
-            color = (43, 124, 210)
-            draw.ellipse([x - 5, y - 5, x + 5, y + 5], fill=color, outline=(40, 40, 40))
-        else:
-            color = (90, 90, 90)
-            draw.rectangle([x - 4, y - 4, x + 4, y + 4], fill=color, outline=(40, 40, 40))
-
-
 def load_reports_for_case(reports_df, case_date, start_time, end_time):
     """Filter the full ESWD report table to the current case date and time window."""
     if reports_df is None or reports_df.empty:
@@ -603,87 +488,6 @@ def plot_reports_on_axis(ax, reports_df, domain):
     if not other.empty:
         ax.scatter(other['LONGITUDE'], other['LATITUDE'], s=14, c='0.45',
                    marker='s', edgecolors='black', linewidths=0.3, label='Other report')
-
-
-def save_crop_sequence_map(
-    ds_chunk, crop_chunk, filename, out_path, domain, orography=None, reports_df=None
-):
-    """Save one map for a chunk with 10.8 um, DEM contours, reports, and crop footprints."""
-    os.makedirs(out_path, exist_ok=True)
-    map_path = os.path.join(out_path, f"{filename}_map.png")
-    lon_min, lon_max, lat_min, lat_max = domain
-
-    fig, ax = plt.subplots(figsize=(10, 8))
-    ax.set_xlim(lon_min, lon_max)
-    ax.set_ylim(lat_min, lat_max)
-    ax.set_xlabel("Longitude")
-    ax.set_ylabel("Latitude")
-    #ax.set_title("EXPATS domain: IR 10.8, DEM contours, reports, and lagrangian crop footprints")
-    ax.grid(True, color='0.88', linewidth=0.8)
-
-    ir_mesh = None
-    if 'IR_108' in ds_chunk:
-        ir_first = ds_chunk['IR_108'].isel(time=0)
-        ir_mesh = ax.pcolormesh(
-            ir_first.lon.values,
-            ir_first.lat.values,
-            ir_first.values.squeeze(),
-            cmap='gray_r',
-            vmin=BT108_DISPLAY_MIN,
-            vmax=BT108_DISPLAY_MAX,
-            shading='auto',
-            alpha=0.85,
-            zorder=1,
-        )
-        cbar = fig.colorbar(ir_mesh, ax=ax, pad=0.02, shrink=0.82)
-        cbar.set_label("BT108 (K)")
-
-    plot_orography_contours(ax, orography, domain)
-
-    start_color = (96, 38, 158)     # purple
-    end_color = (118, 215, 234)     # light blue
-    n_crops = len(crop_chunk)
-
-    for index, ds_crop in enumerate(crop_chunk):
-        fraction = index / (n_crops - 1) if n_crops > 1 else 0
-        color = interpolate_rgb(start_color, end_color, fraction)
-
-        crop_lon_min = float(ds_crop.lon.min())
-        crop_lon_max = float(ds_crop.lon.max())
-        crop_lat_min = float(ds_crop.lat.min())
-        crop_lat_max = float(ds_crop.lat.max())
-
-        color_hex = '#%02x%02x%02x' % color
-        rect = Rectangle(
-            (crop_lon_min, crop_lat_min),
-            crop_lon_max - crop_lon_min,
-            crop_lat_max - crop_lat_min,
-            edgecolor=color_hex,
-            facecolor='none',
-            linewidth=2.0,
-            zorder=4,
-        )
-        ax.add_patch(rect)
-        ax.plot(
-            (crop_lon_min + crop_lon_max) / 2,
-            (crop_lat_min + crop_lat_max) / 2,
-            marker='o',
-            color=color_hex,
-            markersize=4,
-            zorder=5,
-        )
-
-    plot_reports_on_axis(ax, reports_df, domain)
-
-    ax.plot([], [], color='#60269e', linewidth=2, label='First crop')
-    ax.plot([], [], color='#76d7ea', linewidth=2, label='Last crop')
-    ax.plot([], [], color='0.35', linewidth=1, label='orography')
-    ax.legend(loc='upper right', fontsize=8)
-
-    fig.tight_layout()
-    fig.savefig(map_path, dpi=150)
-    plt.close(fig)
-    print(f"Saved crop sequence map to {map_path}")
 
 
 def save_eulerian_views_map(
@@ -761,11 +565,10 @@ def save_eulerian_views_map(
 
 def crop_chunk_to_pixel_dataset(crop_chunk):
     """
-    Convert moving lagrangian crops to a fixed pixel grid.
+    Convert a crop chunk to a fixed pixel grid dataset.
 
     Each input crop keeps its own lat/lon coordinates. The data variables are
-    saved on fixed (time, y, x) dimensions so the NetCDF stays 100 x 100 instead
-    of expanding to the union of moving geographic coordinates.
+    saved on fixed (time, y, x) dimensions so the NetCDF stays 100 x 100.
     """
     if not crop_chunk:
         return xr.Dataset()
@@ -815,7 +618,7 @@ def crop_chunk_to_pixel_dataset(crop_chunk):
     )
     ds_chunk['crop_center_lat'] = ('time', np.mean(np.stack(lat_values, axis=0), axis=1))
     ds_chunk['crop_center_lon'] = ('time', np.mean(np.stack(lon_values, axis=0), axis=1))
-    ds_chunk.attrs['grid'] = 'lagrangian pixel grid; lat/lon vary by time'
+    ds_chunk.attrs['grid'] = 'pixel grid; lat/lon vary by time'
 
     return ds_chunk
 
@@ -823,14 +626,16 @@ def crop_chunk_to_pixel_dataset(crop_chunk):
 def save_crop_chunk(
     crop_chunk, chunk_start_index, outpath_crops, outpath_img, date, file_extension,
     var_names, var_props, values_min, values_max, save_video, apply_cma, expats_domain,
-    orography=None, reports_df=None, mode='lagrangian', view_spec=None,
-    eulerian_crop_specs=None, video_vars=None
+    orography=None, reports_df=None, view_spec=None,
+    eulerian_crop_specs=None, video_vars=None, save_plots=True
 ):
     """
-    Save a list of per-timestamp crops as one NetCDF file.
+    Save a list of per-timestamp eulerian crops as one NetCDF file.
     """
     if not crop_chunk:
         return
+    if view_spec is None or eulerian_crop_specs is None:
+        raise ValueError("Eulerian save requires view_spec and eulerian_crop_specs")
 
     ds_chunk = crop_chunk_to_pixel_dataset(crop_chunk)
     first_time = pd.to_datetime(ds_chunk.time.values[0])
@@ -838,13 +643,14 @@ def save_crop_chunk(
     date_str = first_time.strftime("%Y%m%d")
     start_time_str = first_time.strftime("%H%M")
     end_time_str = last_time.strftime("%H%M")
-    view_part = f"_view{view_spec['view_id']:03d}" if view_spec is not None else ""
-    filename_to_save = f"{date_str}_{start_time_str}-{end_time_str}_{mode}{view_part}_chunk{chunk_start_index:03d}_n{len(crop_chunk):02d}_IR_108"
+    filename_to_save = (
+        f"{date_str}_{start_time_str}-{end_time_str}_eulerian_"
+        f"view{view_spec['view_id']:03d}_chunk{chunk_start_index:03d}_n{len(crop_chunk):02d}_IR_108"
+    )
 
-    if view_spec is not None:
-        save_dir = os.path.join(outpath_crops, date, file_extension, mode, f"view_{view_spec['view_id']:03d}")
-    else:
-        save_dir = os.path.join(outpath_crops, date, file_extension, mode)
+    save_dir = os.path.join(
+        outpath_crops, date, file_extension, 'eulerian', f"view_{view_spec['view_id']:03d}"
+    )
     os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(save_dir, f"{filename_to_save}.{file_extension}")
     ds_chunk.to_netcdf(save_path)
@@ -859,8 +665,8 @@ def save_crop_chunk(
                 continue
 
             video_save_path = os.path.join(
-                outpath_img, date, 'videos', mode, video_var,
-                f"view_{view_spec['view_id']:03d}" if view_spec is not None else 'sequence',
+                outpath_img, date, 'videos', 'eulerian', video_var,
+                f"view_{view_spec['view_id']:03d}",
                 'mp4_vmin-vmax_greyscale_CMA' if apply_cma else 'mp4_vmin-vmax_greyscale'
             )
             if video_var in ['IR_108', 'IR_108_masked']:
@@ -877,21 +683,16 @@ def save_crop_chunk(
                 vmin, vmax, reverse=reverse
             )
 
+    if save_plots:
         map_base_path = os.path.join(
-            outpath_img, date, 'videos', mode, 'maps',
-            f"view_{view_spec['view_id']:03d}" if view_spec is not None else 'sequence'
+            outpath_img, date, 'videos', 'eulerian', 'maps',
+            f"view_{view_spec['view_id']:03d}"
         )
-        if view_spec is None:
-            save_crop_sequence_map(
-                ds_chunk, crop_chunk, filename_to_save, map_base_path,
-                expats_domain, orography=orography, reports_df=reports_df
-            )
-        elif eulerian_crop_specs is not None:
-            save_eulerian_views_map(
-                ds_chunk, eulerian_crop_specs, view_spec, filename_to_save,
-                map_base_path, expats_domain, orography=orography,
-                reports_df=reports_df
-            )
+        save_eulerian_views_map(
+            ds_chunk, eulerian_crop_specs, view_spec, filename_to_save,
+            map_base_path, expats_domain, orography=orography,
+            reports_df=reports_df
+        )
 
 
 
@@ -921,19 +722,24 @@ def main():
         values_max.append(value_max)
     #print(values_max, values_min)
 
+    # set dimension of crops in pixels
     x_pixel = 100 
     y_pixel = 100 
 
+    # define expats domain
     expats_domain = (5, 16, 42, 51.5) # lonmin, lonmax, latmin, latmax
-    orography = load_orography_from_dem(DEM_PATH)
 
     apply_cma = True #if True, the cma variable will be included in the crops
     file_extension = 'nc'  # File extension for the dataset files
     save_video = True
+    save_plots = True
     chunk_size = 8
 
+    # load orography from DEM only when map plots are requested
+    orography = load_orography_from_dem(DEM_PATH) if save_plots else None
+
     # define output path
-    base_output_path = "/sat_data/crops/GRL_testing_crops"
+    base_output_path = "/sat_data/crops/GRL_testing_crops/run2"
     if not os.path.exists(base_output_path):
         os.makedirs(base_output_path)
     outpath_crops = f'{base_output_path}'
@@ -943,18 +749,28 @@ def main():
 
 
     # read list of cases from csv file
-    cases_csv_path = "/sat_data/output/grl_2026/csv/essl_cases_2025_grl.csv"
-    cases_df = pd.read_csv(cases_csv_path)  
+    
+    # read all essl cases from the csv files of the training datasets 
+    test_years = [2016, 2017, 2020, 2021, 2024, 2025]
+    cases_df_list = []
+    for year_test in test_years:
+        cases_csv_path = f"/sat_data/output/grl_2026/csv/essl_cases_{year_test}_grl.csv"
+        cases_df = pd.read_csv(cases_csv_path)  
+        cases_df_list.append(cases_df)
+    cases_df = pd.concat(cases_df_list, ignore_index=True)
 
     reports_csv_path = "/sat_data/output/grl_2026/csv/eswd-v2-2012-2025_expats.csv"
-    if os.path.exists(reports_csv_path):
+    if save_plots and os.path.exists(reports_csv_path):
         reports_df = pd.read_csv(reports_csv_path)
         reports_df["TIME_EVENT"] = reports_df["TIME_EVENT"].astype(str)
         reports_df["date"] = pd.to_datetime(reports_df["TIME_EVENT"].str.slice(0, 10))
         print("ESWD reports CSV loaded for map overlays.")
-    else:
+    elif save_plots:
         reports_df = None
         print(f"ESWD reports CSV not found at {reports_csv_path}; report overlays will be skipped.")
+    else:
+        reports_df = None
+        print("Map plots disabled; DEM and ESWD report overlays will be skipped.")
 
 
     # loop on cases and generate crops
@@ -1008,15 +824,6 @@ def main():
             num_timestamps = len(ds_day.time.values)
             print(f"Number of timestamps in the data: {num_timestamps}")
 
-            # generate crop centers starting from lat and lon start and evolving to lat/lon end 
-            # if start and end centers are both in the frame centered on lat start lon start, then we can generate crops centered on the start location for all timestamps
-
-            # calculate crop centers for the lagrangian crops, based on the start and end location of the case
-            crop_centers = define_lagrangian_crop_centers(
-                                ds_day_var, x_pixel, y_pixel,
-                                lat_start, lon_start, lat_end, lon_end,
-                                num_timestamps
-                            )
             eulerian_crop_specs = define_eulerian_crop_centers(
                 ds_day_var.isel(time=0), x_pixel, y_pixel, expats_domain
             )
@@ -1025,14 +832,8 @@ def main():
             #loop over each timestamp in the daily file selection between start_time and end_time
             #extract timestamp
             timestamps = ds_day_var.time.values
-            crop_chunk = []
-            chunk_start_index = 0
             eulerian_chunks = {spec['view_id']: [] for spec in eulerian_crop_specs}
             eulerian_chunk_start_indices = {spec['view_id']: 0 for spec in eulerian_crop_specs}
-            num_valid_crops = 0
-            num_skipped_nan = 0
-            num_skipped_range = 0
-            num_saved_chunks = 0
             num_valid_eulerian_crops = 0
             num_skipped_eulerian_nan = 0
             num_skipped_eulerian_range = 0
@@ -1046,56 +847,6 @@ def main():
 
                 ds_var_full_t = ds_day_var.sel(time=timestamp)
                 ds_full_t = ds_day.sel(time=timestamp)
-                ds_var_t = ds_var_full_t
-                ds_t = ds_full_t
-                crop_center_t = crop_centers[ind_time]
-
-                # crop the dataset around the crop center for the timestamp
-                ds_var_t = crops_by_center(ds_var_t, x_pixel, y_pixel, crop_center_t)
-                ds_t = crops_by_center(ds_t, x_pixel, y_pixel, crop_center_t)
-
-                # Check if all variables in the dataset have any NaN
-                is_nan_ds = any([xr.DataArray.isnull(ds_var_t[var]).any() for var in ds_var_t.data_vars])
-
-                # Check if the dataset has values outside the defined range
-                is_outside_range = any([((ds_var_t[var] < values_min[i]) | (ds_var_t[var] > values_max[i])).any() for i,var in enumerate(ds_var_t.data_vars)])
-
-                #if there are no Nan, the months is between April and September 
-                if not is_nan_ds and not is_outside_range:          
-                    num_valid_crops += 1
-
-                    print(f"Processing file: {path_file_bucket} for timestamp: {timestamp_str}")
-
-                    if 'OT 'in var_names:
-                        #substitute channl WV_062 with the difference WV_062-IR_108
-                        ds_var_t['WV_062'] = ds_var_t['WV_062'] - ds_var_t['IR_108']
-                        #the rename the variable to WV_062-IR_108
-                        ds_var_t = ds_var_t.rename({'WV_062': 'WV_062-IR_108'})
-
-                    if apply_cma and 'IR_108' in var_names:
-                        ds_var_t = add_cloud_mask_and_masked_ir108(ds_t, ds_var_t, values_max, var_names)
-                        #print(ds_day_var)
-
-                    if 'time' not in ds_var_t.dims:
-                        ds_var_t = ds_var_t.expand_dims(time=[timestamp])
-
-                    crop_chunk.append(ds_var_t)
-
-                    if len(crop_chunk) == chunk_size:
-                        save_crop_chunk(
-                            crop_chunk, chunk_start_index, outpath_crops, outpath_img,
-                            date, file_extension, var_names, var_props, values_min,
-                            values_max, save_video, apply_cma, expats_domain,
-                            orography=orography, reports_df=case_reports_df
-                        )
-                        crop_chunk = []
-                        chunk_start_index = ind_time + 1
-                        num_saved_chunks += 1
-                else:
-                    if is_nan_ds:
-                        num_skipped_nan += 1
-                    if is_outside_range:
-                        num_skipped_range += 1
 
                 for eulerian_spec in eulerian_crop_specs:
                     eulerian_center = (eulerian_spec['center_lat'], eulerian_spec['center_lon'])
@@ -1141,22 +892,13 @@ def main():
                             outpath_crops, outpath_img, date, file_extension, var_names,
                             var_props, values_min, values_max, save_video, apply_cma,
                             expats_domain, orography=orography, reports_df=case_reports_df,
-                            mode='eulerian', view_spec=eulerian_spec,
+                            view_spec=eulerian_spec,
                             eulerian_crop_specs=eulerian_crop_specs,
-                            video_vars=['IR_108_masked']
+                            video_vars=['IR_108_masked'], save_plots=save_plots
                         )
                         eulerian_chunks[view_id] = []
                         eulerian_chunk_start_indices[view_id] = ind_time + 1
                         num_saved_eulerian_chunks += 1
-
-            if crop_chunk:
-                save_crop_chunk(
-                    crop_chunk, chunk_start_index, outpath_crops, outpath_img,
-                    date, file_extension, var_names, var_props, values_min,
-                    values_max, save_video, apply_cma, expats_domain,
-                    orography=orography, reports_df=case_reports_df
-                )
-                num_saved_chunks += 1
 
             for eulerian_spec in eulerian_crop_specs:
                 view_id = eulerian_spec['view_id']
@@ -1166,17 +908,12 @@ def main():
                         outpath_crops, outpath_img, date, file_extension, var_names,
                         var_props, values_min, values_max, save_video, apply_cma,
                         expats_domain, orography=orography, reports_df=case_reports_df,
-                        mode='eulerian', view_spec=eulerian_spec,
+                        view_spec=eulerian_spec,
                         eulerian_crop_specs=eulerian_crop_specs,
-                        video_vars=['IR_108_masked']
+                        video_vars=['IR_108_masked'], save_plots=save_plots
                     )
                     num_saved_eulerian_chunks += 1
 
-            print(
-                f"Case {date} summary: {num_valid_crops}/{num_timestamps} valid cropped timestamps, "
-                f"{num_skipped_nan} skipped for NaNs, {num_skipped_range} skipped for range, "
-                f"{num_saved_chunks} saved chunk(s)."
-            )
             print(
                 f"Case {date} eulerian summary: {num_valid_eulerian_crops} valid view-timestamps, "
                 f"{num_skipped_eulerian_nan} skipped for NaNs, "
@@ -1186,6 +923,11 @@ def main():
             )
                     
 if __name__ == "__main__":
+
+    # Set flags for saving videos and plots
+    save_video = False
+    save_plots = False  
+
     main()
 
 
